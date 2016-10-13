@@ -61,7 +61,7 @@ bool TestUtils::fileWriteData(const std::string &filePath, const char *data, siz
   auto pos = lseek(fd, 0, SEEK_SET);
   BOOST_ASSERT(pos == 0);
   auto bytesWritten = write(fd, data, len);
-  BOOST_ASSERT(bytesWritten == len);
+  BOOST_ASSERT(bytesWritten >= 0 && (size_t)bytesWritten == len);
   auto status = close(fd);
   BOOST_ASSERT(status == 0);
 

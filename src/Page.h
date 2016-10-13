@@ -10,10 +10,7 @@ namespace tinydbpp {
 class Page {
 public:
 
-  /**
-   * Constructor. Only Pager object should call this method.
-   */
-  Page(Pager &pager, Pager::PageID id) :pager(pager), id(id), iBufRefCount(0), pBuf(nullptr), bDirty(false) { }
+  Page(Pager &pager, Pager::PageID id, bool lazyMode);
 
   /**
    * Destructor.
@@ -40,6 +37,8 @@ public:
    */
   int incRef();
 
+  Pager::PageID getID() const { return this->id; }
+
   /**
    * Decrease page buffer reference count.
    * If reference count is zero, delete page buffer.
@@ -61,12 +60,26 @@ public:
    * And bDirty is set to false.
    */
   void writeBack();
+
+  /**
+   *
+   */
+  void becomeVictim();
+
+  /**
+   * If no one is using this page, this page could be a victim.
+   * @return: Whether anyone is using it.
+   */
+  bool isWeak() const { return iBufRefCount == 0; }
+private:
+  void freeBuffer();
 private:
   Pager &pager;
   Pager::PageID id;
   int iBufRefCount;
   char *pBuf;
   bool bDirty;
+  bool bLazyMode;
 };
 }
 

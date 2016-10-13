@@ -91,50 +91,33 @@ TEST_CASE("Pager should manage cache", "PagerCache") {
   auto sFilePath = utils.generateTmpFilePath();
   REQUIRE(sFilePath.size() > 0);
 
-  // the first page of file is "A\0\0....."
-  char *wbuf = new char[PAGER_PAGE_SIZE * 4];
-  memset(wbuf, 0, PAGER_PAGE_SIZE * 4);
-  wbuf[0] = 'A';
-  wbuf[PAGER_PAGE_SIZE] = 'B';
-  wbuf[2 * PAGER_PAGE_SIZE] = 'C';
-  wbuf[3 * PAGER_PAGE_SIZE] = 'D';
-  bool writeOk = utils.fileWriteData(sFilePath, wbuf, PAGER_PAGE_SIZE * 4);
+  /**
+   * Create a file whose content is "A\0\0.....B\0\0...."
+   */
+  int playCount = 10;
+  int maxPages = 3;
+  char *wbuf = new char[PAGER_PAGE_SIZE * playCount];
+  memset(wbuf, 0, PAGER_PAGE_SIZE * playCount);
+  for (int i = 0; i < playCount; ++i) {
+    wbuf[PAGER_PAGE_SIZE * i] = (char)('A' + i);
+  }
+  bool writeOk = utils.fileWriteData(sFilePath, wbuf, PAGER_PAGE_SIZE * playCount);
   REQUIRE(writeOk);
   delete[] wbuf;
 
-  // Max cache size is 3 pages.
-  Pager *pPager = new Pager(sFilePath, Pager::OpenFlag::ReadWrite, 3);
+  Pager *pPager = new Pager(sFilePath, Pager::OpenFlag::ReadWrite, (Pager::PageID)maxPages);
   REQUIRE(pPager != nullptr);
 
   SECTION("More pages than maxPages can be load if other page bufs are released by user.") {
-    {
-      auto pPage = pPager->getPage(0);
+    for (int i = 0; i < playCount; ++i) {
+      auto pPage = pPager->getPage((unsigned)i);
       auto buf = pPage->getBuf();
-      REQUIRE(buf[0] == 'A');
-      pPage->releaseBuf(buf);
-      buf = nullptr;
-
-      pPage = pPager->getPage(1);
-      buf = pPage->getBuf();
-      REQUIRE(buf[0] == 'B');
-      pPage->releaseBuf(buf);
-      buf = nullptr;
-
-      pPage = pPager->getPage(2);
-      buf = pPage->getBuf();
-      REQUIRE(buf[0] == 'C');
-      pPage->releaseBuf(buf);
-      buf = nullptr;
-
-      pPage = pPager->getPage(3);
-      buf = pPage->getBuf();
-      REQUIRE(buf[0] == 'D');
+      REQUIRE(buf[0] == (char)('A' + i));
       pPage->releaseBuf(buf);
       buf = nullptr;
     }
     delete pPager;
     remove(sFilePath.c_str());
   }
-
 }
 

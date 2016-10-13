@@ -13,13 +13,21 @@
 
 using namespace tinydbpp;
 
+Page::Page(Pager &pager, Pager::PageID id, bool lazyMode)
+        : pager(pager), id(id), iBufRefCount(0), pBuf(nullptr), bDirty(false), bLazyMode(lazyMode) {
+  pager.addWeakPage(id);
+}
+
 Page::~Page() {
   if (this->bDirty)
     writeBack();
   BOOST_ASSERT(this->iBufRefCount == 0);
   BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> destructor.";
-  if (pBuf != nullptr)
-    delete[] pBuf;
+  // If pBuf != nullptr, it means this page is still a weak page.
+  if (pBuf != nullptr) {
+    pager.noMoreWeakPage(this->id);
+    freeBuffer();
+  }
 }
 
 void Page::writeBack() {
@@ -42,22 +50,31 @@ void Page::writeBack() {
 int Page::decRef() {
   iBufRefCount--;
   if (iBufRefCount == 0) {
-    BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> bufRefCount is 0, deleting...";
-    if (this->bDirty) {
-      this->writeBack();
+    /**
+     * If lazyMode, this page becomes a weak page, and could be destroyed at any time.
+     * If not lazyMode, this page is destroyed immediately.
+     */
+    if (bLazyMode) {
+      pager.addWeakPage(this->id);
     }
-    delete [] pBuf;
-    pBuf = nullptr;
+    else {
+      becomeVictim();
+    }
   }
   return iBufRefCount;
 }
 
 char *Page::getBuf() {
   if (pBuf != nullptr) {
-    BOOST_ASSERT(this->iBufRefCount > 0);
+    // if iBufRefCount == 0, the buf is in hanging status,
+    //  it could become a victim at any time.
+    // if iBufRefCount > 0, the buf is actually used somewhere.
+    BOOST_ASSERT(this->iBufRefCount >= 0);
     this->incRef();
     return pBuf;
   }
+
+  pager.needOnePageQuota();
 
   // pBuf == nullptr
   BOOST_ASSERT(this->iBufRefCount == 0);
@@ -83,7 +100,33 @@ char *Page::getBuf() {
 }
 
 void Page::releaseBuf(char *pBuf) {
+  BOOST_ASSERT(pBuf == this->pBuf);
   decRef();
 }
 
-int Page::incRef() { iBufRefCount++; return iBufRefCount; }
+int Page::incRef() {
+  if (this->iBufRefCount == 0) {
+    this->pager.noMoreWeakPage(this->id);
+  }
+  this->iBufRefCount++;
+  return this->iBufRefCount;
+}
+
+void Page::becomeVictim() {
+  BOOST_ASSERT(this->iBufRefCount == 0);
+  BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> has become a victim.";
+  if (this->bDirty) {
+    this->writeBack();
+  }
+  this->freeBuffer();
+  this->pager.noMoreWeakPage(id);
+}
+
+void Page::freeBuffer() {
+  BOOST_ASSERT(pBuf != nullptr);
+  delete[] pBuf;
+  this->pBuf = nullptr;
+  this->bDirty = false;
+  this->pager.releaseOnePageQuota();
+}
+
