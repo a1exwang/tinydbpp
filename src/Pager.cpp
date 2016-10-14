@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <boost/log/trivial.hpp>
 #include <cstring>
+#include "FileUtils.h"
+
 using namespace tinydbpp;
 using namespace std;
 
@@ -30,12 +32,18 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
   if (errno != 0 && errno != EEXIST)
     fprintf(stderr, "errno %d: msg: %s\n", errno, strerror(errno));
   BOOST_ASSERT(this->iFd > 0);
+
+  auto fileSize = FileUtils::fileSize(this->iFd);
+  BOOST_ASSERT(fileSize >= 0 && fileSize % PAGER_PAGE_SIZE == 0);
+  this->maxValidPages = (Pager::PageID) (fileSize / PAGER_PAGE_SIZE);
 }
+
 Pager::~Pager() {
   for (auto entry : this->mapPages) {
     BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
   }
   BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
+  writeBackAll();
   close(this->iFd);
 }
 
@@ -46,6 +54,8 @@ std::shared_ptr<Page> Pager::getPage(tinydbpp::Pager::PageID id) {
     ret->incRef();
     return ret;
   }
+  FileUtils::makeSureAtLeastFileSize(this->iFd, id * PAGER_PAGE_SIZE);
+  this->maxValidPages = FileUtils::filePages(this->iFd);
   auto pPage = shared_ptr<Page>(new Page(*this, id, this->bLazyMode));
   this->mapPages[id] = pPage;
   return pPage;
@@ -96,6 +106,10 @@ void Pager::writeBackAll() {
   for (auto entry : this->mapPages) {
     entry.second->writeBackIfDirty();
   }
+}
+
+Pager::PageID Pager::getValidPageCount() const {
+  return this->maxValidPages;
 }
 
 

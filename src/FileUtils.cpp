@@ -22,3 +22,8 @@ int FileUtils::makeSureAtLeastFileSize(int fd, int n) {
     ret = ftruncate(fd, n);
   return ret;
 }
+
+Pager::PageID FileUtils::filePages(int fd) {
+  auto size = fileSize(fd);
+  return (Pager::PageID) (size / PAGER_PAGE_SIZE);
+}
