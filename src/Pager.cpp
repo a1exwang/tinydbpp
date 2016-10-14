@@ -92,6 +92,14 @@ void Pager::addWeakPage(PageID id) {
   listWeakPages.push_back(id);
 }
 
+void Pager::writeBackAll() {
+  for (auto entry : this->mapPages) {
+    entry.second->writeBackIfDirty();
+  }
+}
+
+
+
 
 
 

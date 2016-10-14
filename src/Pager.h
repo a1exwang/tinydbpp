@@ -102,6 +102,8 @@ public:
    * In a word, when a Page is no more a `weak page`, this function is called.
    */
   void noMoreWeakPage(PageID id);
+
+  void writeBackAll();
 private:
 
   std::map<PageID, std::shared_ptr<Page>> mapPages;

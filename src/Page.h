@@ -62,6 +62,11 @@ public:
   void writeBack();
 
   /**
+   * Call writeBack if bDirty is true.
+   */
+  void writeBackIfDirty() { if (bDirty) writeBack(); }
+
+  /**
    *
    */
   void becomeVictim();

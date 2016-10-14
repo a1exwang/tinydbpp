@@ -115,9 +115,7 @@ int Page::incRef() {
 void Page::becomeVictim() {
   BOOST_ASSERT(this->iBufRefCount == 0);
   BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> has become a victim.";
-  if (this->bDirty) {
-    this->writeBack();
-  }
+  this->writeBackIfDirty();
   this->freeBuffer();
   this->pager.noMoreWeakPage(id);
 }
