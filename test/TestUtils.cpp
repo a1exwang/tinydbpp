@@ -12,7 +12,6 @@
 #include <boost/log/trivial.hpp>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <error.h>
 #include <cstring>
 
 using namespace tinydbpp;

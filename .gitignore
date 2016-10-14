@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+
+/build/*
+.idea/*
+.DS_Store
+.DS_Store?
+*.swp

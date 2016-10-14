@@ -19,6 +19,6 @@ int FileUtils::makeSureAtLeastFileSize(int fd, int n) {
   auto size = fileSize(fd);
   int ret = 0;
   if (size < n)
-    ret = ftruncate64(fd, n);
+    ret = ftruncate(fd, n);
   return ret;
 }

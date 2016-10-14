@@ -4,7 +4,7 @@ project(tinydbpp)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories(src)
-link_libraries(boost_system boost_log boost_thread pthread)
+link_libraries(boost_system boost_log-mt boost_thread-mt pthread)
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
 # Enable all warnings
