@@ -31,8 +31,8 @@ namespace tinydbpp {
             else return ins;
         }
 
-        Location insert(const std::string &table_name, const std::string &record);
-
+        Location insert(const std::string &table_name, const std::string &record, bool);
+        Location* tryInsert(std::shared_ptr<Page>, const std::string &record, bool fixed);
         void update(const std::string &table_name, std::function<bool(std::vector<std::string>)> &c,
                     std::function<void(std::vector<std::string>, char *)>);
 
