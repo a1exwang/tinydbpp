@@ -11,7 +11,12 @@
 #include <boost/assert.hpp>
 #include <boost/lexical_cast.hpp>
 namespace tinydbpp {
-    struct TableDescription {
+
+        struct TableDescription {
+        int len;
+        TableDescription(){
+            len = 0;
+        }
         /*
          * if pattern[x] > 0, it represents a fixed length of pattern[x] bytes
          * if pattern[x] == -1, it represents a varying length which the first 4 bytes is a int representing length
@@ -24,13 +29,10 @@ namespace tinydbpp {
         }
         void addPattern(int x){
             pattern.push_back(x);
+            if(x == -1) len += 4 + DEFAULT_VARCHAR_LEN;
         }
         std::shared_ptr<Pager> my_pager;
-        std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite){
-            if(my_pager == nullptr)
-                return my_pager = new Pager(std::string(DEFAULT_DATABASE_DIR) + getRelativePath(), flag);
-            else return my_pager;
-        }
+        std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite);
         std::vector<std::string> read(char* buf, int len, int& now){
             auto ret = std::vector<std::string>();
             for(int x : pattern){
@@ -40,7 +42,7 @@ namespace tinydbpp {
                     now += x;
                 }else if(x == -1){
                     BOOST_ASSERT(now + 4 <= len);
-                    int next_len = atoi(std::string(buf + now, 4));
+                    int next_len = *(int*)(std::string(buf + now, 4).c_str());
                     now += 4;
                     BOOST_ASSERT(now + next_len <= len);
                     ret.push_back(std::string(buf + now, next_len));
@@ -50,26 +52,34 @@ namespace tinydbpp {
         }
     };
 
-
     class TableManager {
         static TableManager *ins = NULL;
-
         TableManager() {
         }
 
     public:
-        static std::vector<std::shared_ptr<TableDescription>> table_map;
-        static TableDescription sysTableDescription;
+        std::vector<std::shared_ptr<TableDescription>> table_map;
+        static std::string dir;
+        std::string dbname;
+        std::shared_ptr<Pager> dbtable;
         static TableManager *getInstance() {
             if (!ins) {
-                sysTableDescription.name = SYS_TABLE_NAME;
-                sysTableDescription.addPattern(20); //table_name & path can be deduced
-                sysTableDescription.addPattern(-1); //condensed define of columns
-                return ins = new TableManager();
+                ins = new TableManager();
+                if(dir == "")
+                    dir = DEFAULT_DATABASE_DIR;
+                ins->dbtable = new Pager(dir + "/" + SYS_TABLE_NAME, Pager::ReadWrite);
+                return ins;
             } else return ins;
         }
-
+        bool setDir(std::string _dir){
+            if(ins) return false;
+            dir = _dir;
+            return true;
+        }
+        void changeDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
+
+        bool isExist(std::string basic_string);
     };
 }
 
