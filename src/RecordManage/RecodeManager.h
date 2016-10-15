@@ -33,14 +33,15 @@ namespace tinydbpp {
 
         Location insert(const std::string &table_name, const std::string &record, bool);
         Location* tryInsert(std::shared_ptr<Page>, const std::string &record, bool fixed);
-        void update(const std::string &table_name, std::function<bool(std::vector<std::string>)> &c,
-                    std::function<void(std::vector<std::string>, char *)>);
+        void update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
+                    std::function<void(std::vector<std::string>&)>&);
 
-        void del(const std::string &table_name, std::function<bool(std::vector<std::string>)> &c,
-                 std::function<void(std::vector<std::string>, char *)>);
+        void del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
+                 std::function<void(const std::vector<std::string>&)>&);
+        void delOneRecord(const std::string &table_name, int pageID, int now, bool fixed);
 
-        void select(const std::string &table_name, std::function<bool(std::vector<std::string>)> &c,
-                    std::function<void(std::vector<std::string>, char *)>);
+        void select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
+                    std::function<void(std::vector<std::string>&, int, int)>&);
     };
 
 }

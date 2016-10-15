@@ -50,6 +50,14 @@ namespace tinydbpp {
                     BOOST_ASSERT(0);
             }
         }
+        std::string embed(const std::vector<std::string> list, bool & fixed_res){
+            //TODO
+            std::string ret;
+            for(auto s : list)
+                ret += s;
+            fixed_res = false;
+            return ret;
+        }
     };
 
     class TableManager {
