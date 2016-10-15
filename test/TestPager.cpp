@@ -121,3 +121,77 @@ TEST_CASE("Pager should manage cache", "PagerCache") {
   }
 }
 
+
+TEST_CASE("Pager getValidPageCount", "Pager::getValidPageCount") {
+  auto sFilePath = utils.generateTmpFilePath();
+  REQUIRE(sFilePath.size() > 0);
+
+  /**
+   * Create a file with 10 pages.
+   */
+  int playCount = 10;
+  char *wbuf = new char[PAGER_PAGE_SIZE * playCount];
+  memset(wbuf, 0, PAGER_PAGE_SIZE * playCount);
+  bool writeOk = utils.fileWriteData(sFilePath, wbuf, PAGER_PAGE_SIZE * playCount);
+  REQUIRE(writeOk);
+  delete[] wbuf;
+
+  Pager *pPager = new Pager(sFilePath, Pager::OpenFlag::ReadWrite);
+  REQUIRE(pPager != nullptr);
+
+  SECTION("ValidPageCount is correct with a file") {
+    REQUIRE(pPager->getValidPageCount() == 10);
+    delete pPager;
+    remove(sFilePath.c_str());
+  }
+  SECTION("ValidPageCount is increased if new Page object is created") {
+    pPager->getPage(20);
+    REQUIRE(pPager->getValidPageCount() == 20);
+    delete pPager;
+    remove(sFilePath.c_str());
+  }
+  SECTION("ValidPageCount is increased if new page is written back to file") {
+    auto pPage = pPager->getPage(20);
+    char *buf = pPage->getBuf();
+    buf[0] = 'A';
+    pPage->markDirty();
+    pPage->releaseBuf(buf);
+    pPage->writeBackIfDirty();
+    REQUIRE(pPager->getValidPageCount() == 20);
+    delete pPager;
+    remove(sFilePath.c_str());
+  }
+}
+
+TEST_CASE("Pager should read bytes of one page", "Pager") {
+
+  auto sFilePath = utils.generateTmpFilePath();
+  REQUIRE(sFilePath.size() > 0);
+
+  /**
+   * Create a file with 1 page.
+   */
+  char *wbuf = new char[PAGER_PAGE_SIZE];
+  for (int i = 0; i < (int)PAGER_PAGE_SIZE; ++i) {
+    wbuf[i] = (uint8_t) (i % 255);
+  }
+  bool writeOk = utils.fileWriteData(sFilePath, wbuf, PAGER_PAGE_SIZE);
+  REQUIRE(writeOk);
+  delete[] wbuf;
+
+  Pager *pPager = new Pager(sFilePath, Pager::OpenFlag::ReadWrite);
+  REQUIRE(pPager != nullptr);
+
+  SECTION("Should read bytes") {
+    {
+      auto pPage = pPager->getPage(0);
+      auto pBuf = pPage->getBuf();
+      for (int i = 0; i < (int)PAGER_PAGE_SIZE; ++i) {
+        REQUIRE((uint8_t)pBuf[i] == (uint8_t)(i % 255));
+      }
+      pPage->releaseBuf(pBuf);
+    }
+
+    delete pPager;
+  }
+}

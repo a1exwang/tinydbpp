@@ -35,6 +35,25 @@ class Page;
 /**
  * This class serves as a Pager manager.
  * One Pager object maps to a physical file on disk.
+ *
+ * Different states of a page.
+ *
+ *                                           releaseBuf() (if lazyMode is on)
+ *                                    |--------|
+ *                                    |        |
+ *      new             getBuf()      |        |
+ * nil  ->  Page object  ----->     Cached  <---|
+ *            ^          <----      /
+ *            |      releaseBuf()  /
+ *             \    or cache full /
+ * releaseBuf() \                / markDirty()
+ *               \              /
+ *                \            /
+ *                 \          /
+ *                  \        <
+ *                    Dirty
+ *
+ *
  */
 class Pager {
 public:
@@ -91,6 +110,12 @@ public:
   std::string getFilePath() const { return this->sFilePath; }
 
   /**
+   * If a Page object is created, the page is called 'valid'.
+   * @return page count of file.
+   */
+  PageID getValidPageCount() const;
+
+  /**
    * When no one is holding a reference to the Page's buffer,
    *  the Page object calls this function to add herself to weak page list.
    */
@@ -119,6 +144,7 @@ private:
   Pager::PageID maxPages;
   Pager::PageID pagesCached;
   bool bLazyMode;
+  Pager::PageID maxValidPages;
 };
 }
 
