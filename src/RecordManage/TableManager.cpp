@@ -9,7 +9,7 @@ TableManager * TableManager::ins = NULL;
 
 shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     if(my_pager == nullptr)
-        return my_pager = shared_ptr<Pager>(new Pager(TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + getRelativePath(), flag));
+        return my_pager = shared_ptr<Pager>(new Pager(TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + getRelativePath(), flag));
     else return my_pager;
 }
 
@@ -74,6 +74,10 @@ void TableManager::changeDB(std::string db) {
     }
 }
 
-bool TableManager::isExist(std::string basic_string) {
-    return false;
+bool TableManager::isExist(std::string fileName) {
+    string whole_name = TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + fileName;
+    FILE* testFile = fopen(whole_name, "r");
+    if(testFile == NULL) return false;
+    fclose(testFile);
+    return true;
 }

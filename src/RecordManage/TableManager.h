@@ -62,7 +62,7 @@ namespace tinydbpp {
         void changeDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
 
-        bool isExist(std::string basic_string);
+        bool isExist(std::string);
     };
 }
 
