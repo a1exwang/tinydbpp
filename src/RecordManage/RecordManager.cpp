@@ -5,12 +5,13 @@
 #include <Pager.h>
 #include <Page.h>
 #include <FileUtils.h>
-#include "RecodeManager.h"
+#include "RecordManager.h"
 #include "TableManager.h"
 
 using namespace std;
 namespace tinydbpp {
-    Location* RecodeManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){
+    RecordManager * RecordManager::ins = NULL;
+    Location* RecordManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){
         char* data = data_page->getBuf();
         if(fixed){
             short& free_loc = *(short*)data;
@@ -64,7 +65,7 @@ namespace tinydbpp {
             return NULL;
         }
     }
-    Location RecodeManager::insert(const std::string &table_name, const std::string &record, bool fixed) {
+    Location RecordManager::insert(const std::string &table_name, const std::string &record, bool fixed) {
         Location ret(-1,0);
         shared_ptr<Pager> ptr = TableManager::getInstance()->getTableDescription(table_name)->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
@@ -85,8 +86,8 @@ namespace tinydbpp {
                 }
             }
         }
-        //TODO new page
-        shared_ptr<Page> new_page = nullptr;
+
+        shared_ptr<Page> new_page = ptr->getPage(pages);
         char* new_buf = new_page->getBuf();
         if(!fixed){
             dic[pages - 1] = 1;
@@ -104,7 +105,7 @@ namespace tinydbpp {
         dic_page->releaseBuf(dic);
         return ret;
     }
-    void RecodeManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
                 std::function<void(std::vector<std::string>&)>& solver){
         auto rm = this;
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
@@ -149,7 +150,7 @@ namespace tinydbpp {
         p->releaseBuf(data);
     }
 
-    void RecodeManager::del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
              std::function<void(const std::vector<std::string>&)>& solver){
         auto rm = this;
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
@@ -169,7 +170,7 @@ namespace tinydbpp {
          return;
     }
 
-    void RecodeManager::select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
              std::function<void(std::vector<std::string>&, int, int)> & solver) {
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();

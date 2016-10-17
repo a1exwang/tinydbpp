@@ -7,7 +7,6 @@
 
 namespace tinydbpp {
 class TestPager {
-
 };
 }
 

@@ -2,8 +2,8 @@
 // Created by chord on 16/10/14.
 //
 
-#ifndef TINYDBPP_RECODEMANAGER_H
-#define TINYDBPP_RECODEMANAGER_H
+#ifndef TINYDBPP_RecordMANAGER_H
+#define TINYDBPP_RecordMANAGER_H
 
 
 #include <cstdlib>
@@ -20,14 +20,14 @@ namespace tinydbpp {
         Location(int _a, int _b) : pageNumber(_a), loc(_b) {}
     };
 
-    class RecodeManager {
-        static RecodeManager *ins = NULL;
+    class RecordManager {
+        static RecordManager *ins;
 
-        RecodeManager() {}
+        RecordManager() {}
 
     public:
-        static RecodeManager *getInstance() {
-            if (!ins) return ins = new RecodeManager();
+        static RecordManager *getInstance() {
+            if (!ins) return ins = new RecordManager();
             else return ins;
         }
 
@@ -45,4 +45,4 @@ namespace tinydbpp {
     };
 
 }
-#endif //TINYDBPP_RECODEMANAGER_H
+#endif //TINYDBPP_RecordMANAGER_H

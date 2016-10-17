@@ -14,7 +14,7 @@ namespace tinydbpp {
 
         struct TableDescription {
         int len;
-        TableDescription(){
+        TableDescription():my_pager(nullptr){
             len = 0;
         }
         /*
@@ -49,6 +49,7 @@ namespace tinydbpp {
                 }else
                     BOOST_ASSERT(0);
             }
+            return ret;
         }
         std::string embed(const std::vector<std::string> list, bool & fixed_res){
             //TODO
@@ -61,8 +62,8 @@ namespace tinydbpp {
     };
 
     class TableManager {
-        static TableManager *ins = NULL;
-        TableManager() {
+        static TableManager *ins;
+        TableManager():dbtable(nullptr) {
         }
 
     public:
@@ -75,7 +76,7 @@ namespace tinydbpp {
                 ins = new TableManager();
                 if(dir == "")
                     dir = DEFAULT_DATABASE_DIR;
-                ins->dbtable = new Pager(dir + "/" + SYS_TABLE_NAME, Pager::ReadWrite);
+                ins->dbtable = std::shared_ptr<Pager>(new Pager(dir + "/" + SYS_TABLE_NAME, Pager::ReadWrite));
                 return ins;
             } else return ins;
         }

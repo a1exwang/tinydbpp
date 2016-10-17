@@ -8,5 +8,5 @@
 
 const char SYS_TABLE_NAME[] = "SYSTABLE";
 const char DEFAULT_DATABASE_DIR[] = "./database";
-const DEFAULT_VARCHAR_LEN = 64;
+const int DEFAULT_VARCHAR_LEN = 64;
 #endif //TINYDBPP_CONFIG_H_H
