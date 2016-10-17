@@ -6,6 +6,6 @@
 #define CATCH_CONFIG_MAIN
 #include <Pager.h>
 #include <Page.h>
-#include <catch.hpp>
+//#include <catch.hpp>
 using namespace tinydbpp;
 using namespace std;

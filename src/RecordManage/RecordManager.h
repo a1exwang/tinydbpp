@@ -14,9 +14,8 @@
 
 namespace tinydbpp {
     struct Location {
-        int loc;
         int pageNumber;
-
+        int loc;
         Location(int _a, int _b) : pageNumber(_a), loc(_b) {}
     };
 

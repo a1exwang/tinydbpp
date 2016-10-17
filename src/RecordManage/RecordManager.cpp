@@ -134,7 +134,7 @@ namespace tinydbpp {
         dic_page->releaseBuf(dic);
         return;
     }
-    void delOneRecord(const std::string &table_name, int pageID, int now, bool fixed){
+    void RecordManager::delOneRecord(const std::string &table_name, int pageID, int now, bool fixed){
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Page> p = td->getPager()->getPage(pageID);
         char * data = p->getBuf();
@@ -157,7 +157,7 @@ namespace tinydbpp {
         shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
-        auto del_func = [&solver, &rm, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &rm, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
              solver(vec);
              bool fixed = (dic[pageID - 2] & 1) == 0;
              rm->delOneRecord(table_name, pageID, now, fixed);
@@ -166,6 +166,7 @@ namespace tinydbpp {
              dic_page->markDirty();
              return;
          };
+        select(table_name, checker, del_func);
          dic_page->releaseBuf(dic);
          return;
     }
@@ -184,7 +185,7 @@ namespace tinydbpp {
             int now = fixed? 2 : 0;
             while(now < PAGER_PAGE_SIZE){
                 if(data[now] == 0)//free
-                    now += *(short*)(data + now + 1) + fixed ? 5 : 3;
+                    now += *(short*)(data + now + 1) + (fixed ? 5 : 3);
                 else{//used
                     int this_loc = now;
                     now += fixed ? 3: 1;
