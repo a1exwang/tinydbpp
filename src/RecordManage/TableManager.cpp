@@ -32,11 +32,20 @@ std::vector<std::string> TableDescription::read(char* buf, int len, int& now){
     return ret;
 }
 std::string TableDescription::embed(const std::vector<std::string> list, bool & fixed_res){
-    //TODO
     std::string ret;
-    for(auto s : list)
-        ret += s;
-    fixed_res = false;
+    fixed_res = true;
+    for(int i = 0;i < list.size();i++){
+        if(pattern[i] == -1){
+            if(list[i].size() > DEFAULT_VARCHAR_LEN)
+                fixed_res = false;
+            int len = (int)list[i].length();
+            char tmp[5];
+            *(int*)tmp = len;
+            tmp[4] = '\0';
+            ret += string(tmp);
+        }
+        ret += list[i];
+    }
     return ret;
 }
 
@@ -50,9 +59,9 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         return nullptr;
     shared_ptr<TableDescription> ret(new TableDescription());
     ret->name = name;
-    ret->addPattern(4);
     auto p = ret->getPager()->getPage(0);
     //TODO parse schema
+    ret->addPattern(4);
     table_map.push_back(ret);
     return ret;
 }
