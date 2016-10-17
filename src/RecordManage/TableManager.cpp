@@ -3,6 +3,7 @@
 //
 
 #include <TableManager.h>
+#include <iostream>
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
@@ -22,10 +23,10 @@ std::vector<std::string> TableDescription::read(char* buf, int len, int& now){
             now += x;
         }else if(x == -1){
             BOOST_ASSERT(now + 4 <= len);
-            int next_len = *(int*)(std::string(buf + now, 4).c_str());
+            int next_len = *(int*)(buf + now);
             now += 4;
             BOOST_ASSERT(now + next_len <= len);
-            ret.push_back(std::string(buf + now, next_len));
+            ret.push_back(std::string(buf + now, buf + now + next_len));
         }else
             BOOST_ASSERT(0);
     }
@@ -35,16 +36,16 @@ std::string TableDescription::embed(const std::vector<std::string> list, bool & 
     std::string ret;
     fixed_res = true;
     for(int i = 0;i < list.size();i++){
-        if(pattern[i] == -1){
-            if(list[i].size() > DEFAULT_VARCHAR_LEN)
+        if(pattern[i] == -1) {
+            if (list[i].size() > DEFAULT_VARCHAR_LEN)
                 fixed_res = false;
-            int len = (int)list[i].length();
-            char tmp[5];
-            *(int*)tmp = len;
-            tmp[4] = '\0';
-            ret += string(tmp);
+            int len = (int) list[i].length();
+            char tmp[4];
+            *(int *) tmp = len;
+            ret += string(tmp, tmp + 4);
         }
         ret += list[i];
+        //TODO varchar 64 fill
     }
     return ret;
 }

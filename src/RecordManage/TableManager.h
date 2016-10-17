@@ -49,8 +49,10 @@ namespace tinydbpp {
         static TableManager *getInstance() {
             if (!ins) {
                 ins = new TableManager();
-                if(dir == "")
+                if(dir == "") {
+                    //TODO create directory
                     dir = DEFAULT_DATABASE_DIR;
+                }
                 ins->dbtable = std::shared_ptr<Pager>(new Pager(dir + "/" + SYS_TABLE_NAME, Pager::ReadWrite));
                 return ins;
             } else return ins;

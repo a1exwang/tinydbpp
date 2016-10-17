@@ -7,9 +7,11 @@
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <RecordManage/TableManager.h>
-
+#include <vector>
+#include <iostream>
 using namespace tinydbpp;
 using namespace std;
+
 
 TEST_CASE("getTableDescription","[TableManager]"){
     TableManager::getInstance()->changeDB("Test");
@@ -19,6 +21,18 @@ TEST_CASE("getTableDescription","[TableManager]"){
         REQUIRE(td->len == 4);
         REQUIRE(td->name == "Number");
         REQUIRE(td->getPath() == string(DEFAULT_DATABASE_DIR) + "/Test/Number");
+        td->addPattern(-1);
+        vector<string> a = {"abcd", "rfs3efc34"}, b;
+        bool fixed;
+        string res = td->embed(a, fixed);
+        int now = 0;
+        char tmp[100];
+        memcpy(tmp, res.c_str(), res.length());
+        b = td->read(tmp, res.length(), now);
+        REQUIRE(b.size() == a.size());
+        for(int i = 0;i < a.size();i++) {
+            REQUIRE(a[i] == b[i]);
+        }
     }
 }
 
