@@ -2,14 +2,14 @@
 // Created by chord on 16/10/14.
 //
 
-#include "TableManager.h"
+#include <TableManager.h>
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
-
+std::string TableManager::dir;
 shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     if(my_pager == nullptr)
-        return my_pager = shared_ptr<Pager>(new Pager(TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + getRelativePath(), flag));
+        return my_pager = shared_ptr<Pager>(new Pager(path, flag));
     else return my_pager;
 }
 
@@ -59,6 +59,7 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         return nullptr;
     shared_ptr<TableDescription> ret(new TableDescription());
     ret->name = name;
+    ret->path = dir + "/" + dbname + "/" + name;
     auto p = ret->getPager()->getPage(0);
     //TODO parse schema
     ret->addPattern(4);
@@ -74,10 +75,22 @@ void TableManager::changeDB(std::string db) {
     }
 }
 
-bool TableManager::isExist(std::string fileName) {
-    string whole_name = TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + fileName;
-    FILE* testFile = fopen(whole_name, "r");
+bool TableManager::isExist(std::string name) {
+    //TODO check info in DBTable
+    string whole_name = TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + name;
+    FILE* testFile = fopen(whole_name.c_str(), "r");
     if(testFile == NULL) return false;
     fclose(testFile);
     return true;
+}
+
+bool TableManager::buildTable(std::string name) {
+    if(isExist(name)) return false;
+    else{
+        string whole_name = dir + "/" + dbname + "/" + name;
+        shared_ptr<Pager> ptr( new Pager(whole_name, Pager::ReadWrite) );
+        shared_ptr<Page> p = ptr->getPage(0);
+        //TODO write scheme
+        return true;
+    }
 }

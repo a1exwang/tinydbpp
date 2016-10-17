@@ -19,16 +19,17 @@ namespace tinydbpp {
              * if pattern[x] == -1, it represents a varying length which the first 4 bytes is a int representing length
              */
             std::vector<int> pattern;
-            std::string name;
+            std::string name, path;
             std::shared_ptr<Pager> my_pager;
             TableDescription():my_pager(nullptr), len(0){}
             //path after DEFAULT_DATABASE_DIR
-            std::string getRelativePath(){
-                return name;
+            std::string getPath(){
+                return path;
             }
             void addPattern(int x){
                 pattern.push_back(x);
                 if(x == -1) len += 4 + DEFAULT_VARCHAR_LEN;
+                else len += x;
             }
             std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite);
             std::vector<std::string> read(char* buf, int len, int& now);
@@ -54,14 +55,14 @@ namespace tinydbpp {
                 return ins;
             } else return ins;
         }
-        bool setDir(std::string _dir){
+        static bool setDir(std::string _dir){
             if(ins) return false;
             dir = _dir;
             return true;
         }
         void changeDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
-
+        bool buildTable(std::string);
         bool isExist(std::string);
     };
 }
