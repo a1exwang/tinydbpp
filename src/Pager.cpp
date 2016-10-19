@@ -54,7 +54,7 @@ std::shared_ptr<Page> Pager::getPage(tinydbpp::Pager::PageID id) {
     ret->incRef();
     return ret;
   }
-  FileUtils::makeSureAtLeastFileSize(this->iFd, id * PAGER_PAGE_SIZE);
+  FileUtils::makeSureAtLeastFileSize(this->iFd, (id + 1) * PAGER_PAGE_SIZE );
   this->maxValidPages = FileUtils::filePages(this->iFd);
   auto pPage = shared_ptr<Page>(new Page(*this, id, this->bLazyMode));
   this->mapPages[id] = pPage;
