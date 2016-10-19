@@ -7,6 +7,7 @@
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
+TableManager::Garbo TableManager::garbo;
 std::string TableManager::dir;
 shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     if(my_pager == nullptr)

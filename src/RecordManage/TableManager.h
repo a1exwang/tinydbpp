@@ -10,6 +10,8 @@
 #include <vector>
 #include <boost/assert.hpp>
 #include <boost/lexical_cast.hpp>
+#include <iostream>
+
 namespace tinydbpp {
 
         struct TableDescription {
@@ -40,7 +42,16 @@ namespace tinydbpp {
         static TableManager *ins;
         TableManager():dbtable(nullptr) {
         }
-
+        struct Garbo{
+            Garbo(){
+                std::cout <<"garbo 1"<<std::endl;
+            }
+            ~Garbo(){
+                delete TableManager::getInstance();
+                std::cout <<"garbo"<<std::endl;
+            }
+        };
+        static Garbo garbo;
     public:
         std::vector<std::shared_ptr<TableDescription>> table_map;
         static std::string dir;
@@ -67,6 +78,8 @@ namespace tinydbpp {
         bool buildTable(std::string);
         bool isExist(std::string);
     };
+
+
 }
 
 #endif //TINYDBPP_TABLEMANAGER_H

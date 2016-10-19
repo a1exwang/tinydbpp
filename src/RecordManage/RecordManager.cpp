@@ -10,7 +10,7 @@
 
 using namespace std;
 namespace tinydbpp {
-    RecordManager * RecordManager::ins = NULL;
+    RecordManager * RecordManager::ins = nullptr;
 
     Location* RecordManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){
         char* data = data_page->getBuf();
@@ -109,12 +109,11 @@ namespace tinydbpp {
     }
     void RecordManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
                 std::function<void(std::vector<std::string>&)>& solver){
-        auto rm = this;
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
-        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &rm, &td, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &td, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
             solver(vec);
             bool fixed_res;
             string res = td->embed(vec, fixed_res);
@@ -127,8 +126,8 @@ namespace tinydbpp {
                 p->releaseBuf(data);
                 dic_page->markDirty();
             }else {
-                  rm->delOneRecord(table_name, pageID, now, fixed);
-                  rm->insert(table_name, res, fixed_res);
+                RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
+                RecordManager::getInstance()->insert(table_name, res, fixed_res);
             }
             return;
         };
@@ -154,15 +153,14 @@ namespace tinydbpp {
 
     void RecordManager::del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
              std::function<void(const std::vector<std::string>&)>& solver){
-        auto rm = this;
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
-        std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &rm, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
              solver(vec);
              bool fixed = (dic[pageID - 2] & 1) == 0;
-             rm->delOneRecord(table_name, pageID, now, fixed);
+             RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
              if((dic[pageID - 2] & 2) == 1)
                 dic[pageID -2] ^= 2;
              dic_page->markDirty();
