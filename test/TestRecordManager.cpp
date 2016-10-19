@@ -29,6 +29,7 @@ TEST_CASE("correctness","[RecordManager]"){
         REQUIRE(string(buf + loc.loc + 1, res.length()) == res);
 //        for(int i = 0;i < res.length();i++)
 //            cout << (int)res[i]<< " " <<endl;
+        //p->writeBack();
         p->releaseBuf(buf);
     }
 }

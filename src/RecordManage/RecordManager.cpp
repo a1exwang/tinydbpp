@@ -101,7 +101,6 @@ namespace tinydbpp {
             *(short*)(new_buf + 5) = (short)0;
             cout << *(short*)(new_buf + 3)<<endl;
             new_page->markDirty();
-            new_page->writeBack();
         }
         new_page->releaseBuf(new_buf);
         ret = *tryInsert(new_page, record, fixed);
