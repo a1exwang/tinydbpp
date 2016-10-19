@@ -2,7 +2,6 @@
 // Created by chord on 16/10/17.
 //
 
-#include "TestTableManager.h"
 #include <Pager.h>
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
@@ -28,11 +27,16 @@ TEST_CASE("getTableDescription","[TableManager]"){
         int now = 0;
         char tmp[100];
         memcpy(tmp, res.c_str(), res.length());
-        b = td->read(tmp, res.length(), now);
+        b = td->read(tmp, res.length(), now, fixed);
         REQUIRE(b.size() == a.size());
         for(int i = 0;i < a.size();i++) {
             REQUIRE(a[i] == b[i]);
         }
+        REQUIRE(now == DEFAULT_VARCHAR_LEN + 8);
+    }
+    SECTION("do not exist"){
+        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription("NOP");
+        REQUIRE(td == nullptr);
     }
 }
 

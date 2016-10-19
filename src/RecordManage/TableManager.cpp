@@ -14,8 +14,9 @@ shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     else return my_pager;
 }
 
-std::vector<std::string> TableDescription::read(char* buf, int len, int& now){
+std::vector<std::string> TableDescription::read(char* buf, int len, int& now, bool fixed){
     auto ret = std::vector<std::string>();
+    int minimum = now + this->len;
     for(int x : pattern){
         if(x > 0){
             BOOST_ASSERT(now + x <= len);
@@ -30,6 +31,8 @@ std::vector<std::string> TableDescription::read(char* buf, int len, int& now){
         }else
             BOOST_ASSERT(0);
     }
+    if(fixed && now < minimum)
+        now = minimum;
     return ret;
 }
 std::string TableDescription::embed(const std::vector<std::string> list, bool & fixed_res){
@@ -45,8 +48,9 @@ std::string TableDescription::embed(const std::vector<std::string> list, bool & 
             ret += string(tmp, tmp + 4);
         }
         ret += list[i];
-        //TODO varchar 64 fill
     }
+    if(fixed_res)
+        ret.resize(len);
     return ret;
 }
 
@@ -91,6 +95,8 @@ bool TableManager::buildTable(std::string name) {
         string whole_name = dir + "/" + dbname + "/" + name;
         shared_ptr<Pager> ptr( new Pager(whole_name, Pager::ReadWrite) );
         shared_ptr<Page> p = ptr->getPage(0);
+        shared_ptr<Page> dic_p = ptr->getPage(1);
+        ptr->writeBackAll();
         //TODO write scheme
         return true;
     }

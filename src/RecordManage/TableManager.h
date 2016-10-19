@@ -32,7 +32,7 @@ namespace tinydbpp {
                 else len += x;
             }
             std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite);
-            std::vector<std::string> read(char* buf, int len, int& now);
+            std::vector<std::string> read(char* buf, int len, int& now, bool fixed);
             std::string embed(const std::vector<std::string> list, bool & fixed_res);
     };
 

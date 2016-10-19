@@ -7,7 +7,7 @@
 
 
 #include <cstdlib>
-#include <TableManager.h>
+#include "TableManager.h"
 #include <functional>
 #include <string>
 #include <vector>
@@ -21,7 +21,6 @@ namespace tinydbpp {
 
     class RecordManager {
         static RecordManager *ins;
-
         RecordManager() {}
 
     public:

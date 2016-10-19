@@ -73,7 +73,7 @@ public:
    * @param maxPages: Max cached pages.
    * @param lazyMode: Lazy mode means no page is freed unless cache buffer is full.
    */
-  Pager(const std::string &sPath, OpenFlag flags, PageID maxPages = PAGER_DEFAULT_MAX_PAGES, bool lazyMode = false);
+  Pager(const std::string &sPath, OpenFlag flags, PageID maxPages = PAGER_DEFAULT_MAX_PAGES, bool lazyMode = true);
   ~Pager();
 
   /**

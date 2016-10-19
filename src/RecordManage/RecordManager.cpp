@@ -4,13 +4,14 @@
 
 #include <Pager.h>
 #include <Page.h>
-#include <FileUtils.h>
+#include <iostream>
 #include "RecordManager.h"
 #include "TableManager.h"
 
 using namespace std;
 namespace tinydbpp {
     RecordManager * RecordManager::ins = NULL;
+
     Location* RecordManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){
         char* data = data_page->getBuf();
         if(fixed){
@@ -36,7 +37,7 @@ namespace tinydbpp {
                 *(short*)(data + free_loc + 3) = *(short*)(data + this_loc + 3);//next
                 *(short*)(data + free_loc + 1) = len - (short)1 - (short)record.length();//length
             }
-            strcpy(data + this_loc + 1, record.c_str());
+            memcpy(data + this_loc + 1, record.c_str(), record.length());
             *(data + this_loc) = 1;
             data_page->markDirty();
             data_page->releaseBuf(data);
@@ -46,7 +47,7 @@ namespace tinydbpp {
             while(now + 3 < PAGER_PAGE_SIZE){
                 short len = *(short*)(data + now + 1);
                 if(*(data + now) == 0 && (len >= record.length() + 3 || len == record.length())){
-                    strcpy(data + now + 3, record.c_str());
+                    memcpy(data + now + 3, record.c_str(), record.length());
                     *(short*)(data + now + 1) = (short)record.length();
                     *(data + now) = 1;
                     if(len >= record.length() + 3) {
@@ -70,7 +71,7 @@ namespace tinydbpp {
         shared_ptr<Pager> ptr = TableManager::getInstance()->getTableDescription(table_name)->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char* dic = dic_page->getBuf();
-        int pages = FileUtils::filePages(ptr->getFD());
+        int pages = ptr->getValidPageCount();
         for(int i = 2; i < pages; i++){
             char state = dic[i - 2];
             if( (fixed && (state & 1) == 0 && (state & 2) == 0) ||
@@ -82,11 +83,10 @@ namespace tinydbpp {
                     dic_page->markDirty();
                 }else{
                     ret = *result;
-                    break;
+                    return ret;
                 }
             }
         }
-
         shared_ptr<Page> new_page = ptr->getPage(pages);
         char* new_buf = new_page->getBuf();
         if(!fixed){
@@ -99,6 +99,9 @@ namespace tinydbpp {
             *(new_buf + 2) = 0;
             *(short*)(new_buf + 3) = (short)(PAGER_PAGE_SIZE - 7);
             *(short*)(new_buf + 5) = (short)0;
+            cout << *(short*)(new_buf + 3)<<endl;
+            new_page->markDirty();
+            new_page->writeBack();
         }
         new_page->releaseBuf(new_buf);
         ret = *tryInsert(new_page, record, fixed);
@@ -120,7 +123,7 @@ namespace tinydbpp {
             if(fixed && fixed_res){
                 shared_ptr<Page> p = ptr->getPage(pageID);
                 char * data = p->getBuf();
-                strcpy(data + now + 1, res.c_str());
+                memcpy(data + now + 1, res.c_str(), res.length());
                 p->markDirty();
                 p->releaseBuf(data);
                 dic_page->markDirty();
@@ -175,7 +178,7 @@ namespace tinydbpp {
              std::function<void(std::vector<std::string>&, int, int)> & solver) {
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
-        int pages = FileUtils::filePages(ptr->getFD());
+        int pages = ptr->getValidPageCount();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
         for(int i = 2;i < pages;i++){
@@ -189,7 +192,7 @@ namespace tinydbpp {
                 else{//used
                     int this_loc = now;
                     now += fixed ? 3: 1;
-                    vector<string> parsed_data = td->read(data, PAGER_PAGE_SIZE, now);
+                    vector<string> parsed_data = td->read(data, PAGER_PAGE_SIZE, now, fixed);
                     if(checker(parsed_data))
                         solver(parsed_data, i, this_loc);
                 }
