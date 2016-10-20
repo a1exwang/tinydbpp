@@ -83,6 +83,7 @@ namespace tinydbpp {
                     dic_page->markDirty();
                 }else{
                     ret = *result;
+                    dic_page->releaseBuf(dic);
                     return ret;
                 }
             }
@@ -196,6 +197,7 @@ namespace tinydbpp {
             }
             p->releaseBuf(data);
         }
+        dic_page->releaseBuf(dic);
     }
 }
 

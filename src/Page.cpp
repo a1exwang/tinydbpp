@@ -21,10 +21,11 @@ Page::Page(Pager &pager, Pager::PageID id, bool lazyMode)
 Page::~Page() {
   if (this->bDirty)
     writeBack();
-  BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
-  BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> destructor.";
+//  BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
+//  BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> destructor.";
   // If pBuf != nullptr, it means this page is still a weak page.
   if (pBuf != nullptr) {
+      printf("page : %d\n", this->id);
     pager.noMoreWeakPage(this->id);
     freeBuffer();
   }

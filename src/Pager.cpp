@@ -40,9 +40,9 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
 
 Pager::~Pager() {
   for (auto entry : this->mapPages) {
-    BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
+    //BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
   }
-  BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
+  //BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
   writeBackAll();
   close(this->iFd);
 }
