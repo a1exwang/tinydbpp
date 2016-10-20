@@ -39,24 +39,28 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
 }
 
 Pager::~Pager() {
-  for (auto entry : this->mapPages) {
-    //BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
-  }
-  //BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
   writeBackAll();
   close(this->iFd);
+
+  /**
+   * NOTE: DO NOT use Boost.Log in static variable destructor.
+   */
+  BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
+  for (auto entry : this->mapPages) {
+    // BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
+    entry.second->pagerDied();
+  }
 }
 
 std::shared_ptr<Page> Pager::getPage(tinydbpp::Pager::PageID id) {
   if (this->mapPages.find(id) != this->mapPages.end()) {
-    BOOST_LOG_TRIVIAL(info) << "getPage(" << id << ") cache hit";
+    BOOST_LOG_TRIVIAL(info) << "Pager::getPage(" << id << ") cache hit";
     auto ret = this->mapPages[id];
-    ret->incRef();
     return ret;
   }
   FileUtils::makeSureAtLeastFileSize(this->iFd, (id + 1) * PAGER_PAGE_SIZE );
   this->maxValidPages = FileUtils::filePages(this->iFd);
-  auto pPage = shared_ptr<Page>(new Page(*this, id, this->bLazyMode));
+  auto pPage = shared_ptr<Page>(new Page(this, id, this->bLazyMode));
   this->mapPages[id] = pPage;
   return pPage;
 }
@@ -94,6 +98,7 @@ std::shared_ptr<Page> Pager::findVictim() {
 void Pager::noMoreWeakPage(PageID id) {
   // TODO O(N) -> O(1)
   auto it = std::find(listWeakPages.begin(), listWeakPages.end(), id);
+//  BOOST_LOG_TRIVIAL(info) << "Pager::noMoreWeakPage(), Page " << id << " is no more a weak page.";
   BOOST_ASSERT(it != listWeakPages.end());
   listWeakPages.erase(it);
 }
@@ -111,9 +116,4 @@ void Pager::writeBackAll() {
 Pager::PageID Pager::getValidPageCount() const {
   return this->maxValidPages;
 }
-
-
-
-
-
 

@@ -144,13 +144,13 @@ TEST_CASE("Pager getValidPageCount", "Pager::getValidPageCount") {
     remove(sFilePath.c_str());
   }
   SECTION("ValidPageCount is increased if new Page object is created") {
-    pPager->getPage(20);
+    pPager->getPage(19);
     REQUIRE(pPager->getValidPageCount() == 20);
     delete pPager;
     remove(sFilePath.c_str());
   }
   SECTION("ValidPageCount is increased if new page is written back to file") {
-    auto pPage = pPager->getPage(20);
+    auto pPage = pPager->getPage(19);
     char *buf = pPage->getBuf();
     buf[0] = 'A';
     pPage->markDirty();

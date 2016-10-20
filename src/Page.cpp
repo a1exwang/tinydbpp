@@ -10,29 +10,35 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <iostream>
 
 using namespace tinydbpp;
 
-Page::Page(Pager &pager, Pager::PageID id, bool lazyMode)
-        : pager(pager), id(id), iBufRefCount(0), pBuf(nullptr), bDirty(false), bLazyMode(lazyMode) {
-  pager.addWeakPage(id);
+Page::Page(Pager *pPager, Pager::PageID id, bool lazyMode)
+        : pPager(pPager), id(id), iBufRefCount(0), pBuf(nullptr), bDirty(false), bLazyMode(lazyMode) {
+  BOOST_ASSERT_MSG(pPager != nullptr, "Wrong parameter, pPager is nullptr.");
 }
 
 Page::~Page() {
-  if (this->bDirty)
+  if (this->bDirty) {
+    BOOST_ASSERT(this->pBuf != nullptr);
+    BOOST_ASSERT_MSG(pPager != nullptr, "Pager destruction before Page destroyed.");
     writeBack();
-//  BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
-//  BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> destructor.";
+  }
+  BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
+
+//  BOOST_LOG_TRIVIAL(info) << "Page::~Page(). Page ID = " << this->id;
   // If pBuf != nullptr, it means this page is still a weak page.
   if (pBuf != nullptr) {
-      printf("page : %d\n", this->id);
-    pager.noMoreWeakPage(this->id);
+    if (bLazyMode && pPager != nullptr)
+      pPager->noMoreWeakPage(this->id);
     freeBuffer();
   }
 }
 
 void Page::writeBack() {
-  int fd = this->pager.getFD();
+  BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
+  int fd = this->pPager->getFD();
 
   auto prevOff = lseek(fd, 0, SEEK_CUR);
   auto seekPos = lseek(fd, this->id * PAGER_PAGE_SIZE, SEEK_SET);
@@ -49,6 +55,8 @@ void Page::writeBack() {
 }
 
 int Page::decRef() {
+  BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
+
   iBufRefCount--;
   if (iBufRefCount == 0) {
     /**
@@ -56,7 +64,7 @@ int Page::decRef() {
      * If not lazyMode, this page is destroyed immediately.
      */
     if (bLazyMode) {
-      pager.addWeakPage(this->id);
+      pPager->addWeakPage(this->id);
     }
     else {
       becomeVictim();
@@ -66,20 +74,23 @@ int Page::decRef() {
 }
 
 char *Page::getBuf() {
+  BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
+  BOOST_LOG_TRIVIAL(info) << "Page::getBuf() called. Page ID " << id << ". RefCount before inc " << this->iBufRefCount;
   if (pBuf != nullptr) {
     // if iBufRefCount == 0, the buf is in hanging status,
     //  it could become a victim at any time.
     // if iBufRefCount > 0, the buf is actually used somewhere.
     BOOST_ASSERT(this->iBufRefCount >= 0);
     this->incRef();
+    BOOST_LOG_TRIVIAL(info) << "Page::getBuf() cache hit. Page::pBuf = " << (void*)this->pBuf;
     return pBuf;
   }
 
-  pager.needOnePageQuota();
+  pPager->needOnePageQuota();
 
   // pBuf == nullptr
   BOOST_ASSERT(this->iBufRefCount == 0);
-  int fd = this->pager.getFD();
+  int fd = this->pPager->getFD();
 
   int fsRet = FileUtils::makeSureAtLeastFileSize(fd, PAGER_PAGE_SIZE * (id + 1));
   BOOST_ASSERT(fsRet == 0);
@@ -91,34 +102,42 @@ char *Page::getBuf() {
   auto curPos = lseek(fd, this->id * PAGER_PAGE_SIZE, SEEK_SET);
   BOOST_ASSERT(curPos == this->id * PAGER_PAGE_SIZE);
   auto readSize = read(fd, this->pBuf, PAGER_PAGE_SIZE);
-  BOOST_LOG_TRIVIAL(info) << "Read from file<" << pager.getFilePath() << "> Page<" << this->id << "> first byte: " << (int)this->pBuf[0];
+  BOOST_LOG_TRIVIAL(info) << "Page::getBuf(). Read from file<" << pPager->getFilePath() <<
+            "> Page<" << this->id << "> first byte: " << (int)this->pBuf[0];
   BOOST_ASSERT(readSize == PAGER_PAGE_SIZE);
 
   // restore previous position
   lseek(fd, prevPos, SEEK_SET);
 
+  BOOST_LOG_TRIVIAL(info) << "Page::getBuf() cache miss. Read from file. Page::pBuf = " <<
+            (void*)this->pBuf;
   return this->pBuf;
 }
 
 void Page::releaseBuf(char *pBuf) {
   BOOST_ASSERT(pBuf == this->pBuf);
+  BOOST_LOG_TRIVIAL(info) << "Page::releaseBuf(). Page ID " << id << " RefCount before release = " << this->iBufRefCount;
   decRef();
 }
 
 int Page::incRef() {
+  BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
   if (this->iBufRefCount == 0) {
-    this->pager.noMoreWeakPage(this->id);
+    if (bLazyMode)
+      this->pPager->noMoreWeakPage(this->id);
   }
   this->iBufRefCount++;
   return this->iBufRefCount;
 }
 
 void Page::becomeVictim() {
+  BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
   BOOST_ASSERT(this->iBufRefCount == 0);
   BOOST_LOG_TRIVIAL(info) << "Page<" << this->id << "> has become a victim.";
   this->writeBackIfDirty();
   this->freeBuffer();
-  this->pager.noMoreWeakPage(id);
+  if (bLazyMode)
+    this->pPager->noMoreWeakPage(id);
 }
 
 void Page::freeBuffer() {
@@ -126,6 +145,11 @@ void Page::freeBuffer() {
   delete[] pBuf;
   this->pBuf = nullptr;
   this->bDirty = false;
-  this->pager.releaseOnePageQuota();
+  if (this->pPager != nullptr)
+    this->pPager->releaseOnePageQuota();
 }
 
+void Page::pagerDied() {
+  BOOST_LOG_TRIVIAL(warning) << "Page::pagerDied()! Pager deleted before page destroyed.";
+  this->pPager = nullptr;
+}

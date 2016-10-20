@@ -10,13 +10,15 @@ namespace tinydbpp {
 class Page {
 public:
 
-  Page(Pager &pager, Pager::PageID id, bool lazyMode);
+  Page(Pager *pPager, Pager::PageID id, bool lazyMode);
 
   /**
    * Destructor.
    * If the page is dirty, it automatically writes back.
    */
   ~Page();
+
+  void pagerDied();
 
   /**
    * Get the content of the page.
@@ -67,7 +69,7 @@ public:
   void writeBackIfDirty() { if (bDirty) writeBack(); }
 
   /**
-   *
+   * If cache has been run out, free this page.
    */
   void becomeVictim();
 
@@ -79,7 +81,7 @@ public:
 private:
   void freeBuffer();
 private:
-  Pager &pager;
+  Pager *pPager;
   Pager::PageID id;
   int iBufRefCount;
   char *pBuf;
