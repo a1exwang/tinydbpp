@@ -150,6 +150,6 @@ void Page::freeBuffer() {
 }
 
 void Page::pagerDied() {
-  BOOST_LOG_TRIVIAL(warning) << "Page::pagerDied()! Pager deleted before page destroyed.";
+//  BOOST_LOG_TRIVIAL(warning) << "Page::pagerDied()! Pager deleted before page destroyed.";
   this->pPager = nullptr;
 }

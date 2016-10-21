@@ -39,7 +39,7 @@ std::vector<std::string> TableDescription::read(char* buf, int len, int& now, bo
 std::string TableDescription::embed(const std::vector<std::string> list, bool & fixed_res){
     std::string ret;
     fixed_res = true;
-    for(int i = 0;i < list.size();i++){
+    for(uint32_t i = 0;i < list.size();i++){
         if(pattern[i] == -1) {
             if (list[i].size() > DEFAULT_VARCHAR_LEN)
                 fixed_res = false;

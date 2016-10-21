@@ -145,6 +145,8 @@ private:
   Pager::PageID pagesCached;
   bool bLazyMode;
   Pager::PageID maxValidPages;
+
+  bool __isDestructing = false;
 };
 }
 

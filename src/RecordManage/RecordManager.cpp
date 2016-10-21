@@ -5,6 +5,7 @@
 #include <Pager.h>
 #include <Page.h>
 #include <iostream>
+#include <boost/log/trivial.hpp>
 #include "RecordManager.h"
 #include "TableManager.h"
 
@@ -21,7 +22,7 @@ namespace tinydbpp {
                 return NULL;
             }
             short len = *(short*)(data + free_loc + 1);
-            if(len < record.length()) {
+            if(len < (short)record.length()) {
                 BOOST_ASSERT(free_loc + 1 + record.length() >= PAGER_PAGE_SIZE);
                 data_page->releaseBuf(data);
                 return NULL;
@@ -44,7 +45,7 @@ namespace tinydbpp {
             return new Location(data_page->getID(), this_loc);
         }else{
             int now = 0;
-            while(now + 3 < PAGER_PAGE_SIZE){
+            while(now + 3 < (int)PAGER_PAGE_SIZE){
                 short len = *(short*)(data + now + 1);
                 if(*(data + now) == 0 && (len >= record.length() + 3 || len == record.length())){
                     memcpy(data + now + 3, record.c_str(), record.length());
@@ -68,7 +69,9 @@ namespace tinydbpp {
     }
     Location RecordManager::insert(const std::string &table_name, const std::string &record, bool fixed) {
         Location ret(-1,0);
-        shared_ptr<Pager> ptr = TableManager::getInstance()->getTableDescription(table_name)->getPager();
+        auto td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::insert(), maybe you type the wrong db name.");
+        shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char* dic = dic_page->getBuf();
         int pages = ptr->getValidPageCount();
@@ -100,7 +103,7 @@ namespace tinydbpp {
             *(new_buf + 2) = 0;
             *(short*)(new_buf + 3) = (short)(PAGER_PAGE_SIZE - 7);
             *(short*)(new_buf + 5) = (short)0;
-            cout << *(short*)(new_buf + 3)<<endl;
+//            cout << *(short*)(new_buf + 3)<<endl;
             new_page->markDirty();
         }
         new_page->releaseBuf(new_buf);
@@ -110,7 +113,9 @@ namespace tinydbpp {
     }
     void RecordManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
                 std::function<void(std::vector<std::string>&)>& solver){
+        BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");
         shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
@@ -120,6 +125,9 @@ namespace tinydbpp {
             string res = td->embed(vec, fixed_res);
             bool fixed = (dic[pageID - 2] & 1) == 0;
             if(fixed && fixed_res){
+                // TODO: Should prevent user from changing record length in fixed-length pages.
+                BOOST_ASSERT_MSG((int)res.size() == td->len,
+                                 "RecordManager::update(). Maybe your new records does not fit in this fixed-length record slot.");
                 shared_ptr<Page> p = ptr->getPage(pageID);
                 char * data = p->getBuf();
                 memcpy(data + now + 1, res.c_str(), res.length());
@@ -138,6 +146,7 @@ namespace tinydbpp {
     }
     void RecordManager::delOneRecord(const std::string &table_name, int pageID, int now, bool fixed){
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::delOneRecord(), maybe you type the wrong db name.");
         shared_ptr<Page> p = td->getPager()->getPage(pageID);
         char * data = p->getBuf();
         if(fixed){
@@ -154,12 +163,14 @@ namespace tinydbpp {
 
     void RecordManager::del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
              std::function<void(const std::vector<std::string>&)>& solver){
+        BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
         std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
-             solver(vec);
+             if (solver)
+               solver(vec);
              bool fixed = (dic[pageID - 2] & 1) == 0;
              RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
              if((dic[pageID - 2] & 2) == 1)
@@ -167,31 +178,62 @@ namespace tinydbpp {
              dic_page->markDirty();
              return;
          };
-        select(table_name, checker, del_func);
+         select(table_name, checker, del_func);
          dic_page->releaseBuf(dic);
          return;
     }
 
+    /**
+     * Traverse all records and call `solver` on the records on which checker returns true.
+     * O(N), N = record count.
+     *
+     * Let's talk about page & record format:
+     *
+     * Page 0 ??
+     *
+     * Page 1 is Dictionary page.
+     *   This page stores page attributes.
+     *   If dic[i] & 1 == true, page i+2 is a fixed-length page(a page contains only fixed-length record).
+     *   Otherwize, page i+2 is a variable-length page.
+     *
+     * Page n (n >= 2)
+     *   These pages store records.
+     *   For pages of fixed-length records.
+     *      +00 uint16  firstFreeRecordOffset   // Offset in page of the first free record slot
+     *      +02 Record  records[M]              // Data.
+     *
+     * Record
+     *  Fixed-length record
+     *      +00 uint8 attribute                 //
+     *
+     * @param table_name
+     * @param checker: Required, check if the record should be selected.
+     * @param solver: Optional, solver is called for each selected records.
+     */
     void RecordManager::select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
              std::function<void(std::vector<std::string>&, int, int)> & solver) {
+        BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::select(), maybe you type the wrong db name.");
         shared_ptr<Pager> ptr = td->getPager();
         int pages = ptr->getValidPageCount();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
         for(int i = 2;i < pages;i++){
             shared_ptr<Page> p = ptr->getPage(i);
+            // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
+            BOOST_ASSERT(i - 2 < (int)PAGER_PAGE_SIZE);
             bool fixed = (dic[i - 2] & 1) == 0;
             char * data = p->getBuf();
             int now = fixed? 2 : 0;
-            while(now < PAGER_PAGE_SIZE){
+            while(now < (int)PAGER_PAGE_SIZE){
                 if(data[now] == 0)//free
                     now += *(short*)(data + now + 1) + (fixed ? 5 : 3);
                 else{//used
                     int this_loc = now;
-                    now += fixed ? 3: 1;
+                    now += fixed ? 1: 3;
                     vector<string> parsed_data = td->read(data, PAGER_PAGE_SIZE, now, fixed);
-                    if(checker(parsed_data))
+                    if(checker(parsed_data) && solver)
                         solver(parsed_data, i, this_loc);
                 }
             }

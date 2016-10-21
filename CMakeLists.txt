@@ -1,20 +1,21 @@
 cmake_minimum_required(VERSION 2.8)
 project(tinydbpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 # Optimization flags
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -D_DEBUG")
 SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
+
 
 include_directories(src)
 
 # Link libraries
 if(UNIX)
   if(APPLE)
-    link_libraries(boost_system boost_log-mt boost_thread-mt pthread)
+    link_libraries(boost_system boost_log-mt boost_thread-mt boost_unit_test_framework-mt pthread)
   else() # Linux
-    link_libraries(boost_system boost_log boost_thread pthread)
+    link_libraries(boost_system boost_log boost_thread boost_unit_test_framework pthread)
   endif()
 else()
   message(FATAL_ERROR, "Does not support non-unix platform")

@@ -23,7 +23,7 @@ namespace tinydbpp {
             std::vector<int> pattern;
             std::string name, path;
             std::shared_ptr<Pager> my_pager;
-            TableDescription():my_pager(nullptr), len(0){}
+            TableDescription(): len(0), my_pager(nullptr){}
             //path after DEFAULT_DATABASE_DIR
             std::string getPath(){
                 return path;

@@ -13,6 +13,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <cstring>
+#include <sstream>
+#include <cmath>
+#include <iomanip>
 
 using namespace tinydbpp;
 using namespace std;
@@ -69,6 +72,7 @@ bool TestUtils::fileWriteData(const std::string &filePath, const char *data, siz
   return true;
 }
 
+
 TestUtils::TestUtils() {
   /**
    * TODO: Currently, seed is set to 0 to make results deterministic.
@@ -80,5 +84,35 @@ TestUtils::TestUtils() {
 
 TestUtils::~TestUtils() {
 
+}
+
+std::string TestUtils::hexdump(const char *ptr, size_t count) const {
+  stringstream ss;
+  size_t items_per_line = 16;
+  size_t line_count = (size_t) ceil((float)count / items_per_line);
+  for (size_t line_number = 0; line_number < line_count; ++line_number) {
+    ss << "+" << setbase(16) << setfill('0') << setw(2) << line_number * items_per_line << "  ";
+    for (size_t col_number = 0; col_number < items_per_line; ++col_number) {
+      ss << setfill('0') << setw(2) << (unsigned int)(uint8_t)ptr[line_number * items_per_line + col_number] << ' ';
+    }
+    ss << " |>";
+    for (size_t col_number = 0; col_number < items_per_line; ++col_number) {
+      char c = ptr[line_number * items_per_line + col_number];
+      switch(c) {
+      case '\n':
+        ss << "\\n"; break;
+      case '\r':
+        ss << "\\r"; break;
+      default:
+        ss << c; break;
+      }
+    }
+    ss << endl;
+  }
+  return ss.str();
+}
+
+std::string TestUtils::hexdump(std::string str) const {
+  return hexdump(str.c_str(), str.size());
 }
 

@@ -12,6 +12,8 @@ class TestUtils {
 public:
   TestUtils();
   ~TestUtils();
+  std::string hexdump(const char *ptr, size_t count) const;
+  std::string hexdump(std::string str) const;
   std::string generateTmpFilePath() const;
   bool fileExists(const std::string &filePath) const;
   int64_t fileSize(const std::string &filePath) const;

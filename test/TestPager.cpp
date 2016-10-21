@@ -32,7 +32,7 @@ TEST_CASE("Pager should write back.", "Pager") {
       // release page
       delete pPager;
     }
-    if (utils.fileExists(sFilePath) == PAGER_PAGE_SIZE) {
+    if (utils.fileExists(sFilePath)) {
       REQUIRE(utils.fileSize(sFilePath) == PAGER_PAGE_SIZE);
       REQUIRE(utils.fileCharAt(sFilePath, 0) == 0);
       remove(sFilePath.c_str());

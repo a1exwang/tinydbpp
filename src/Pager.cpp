@@ -29,8 +29,11 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
     exit(1);
   }
   this->iFd = open(sPath.c_str(), oFlags, 0700);
-  if (errno != 0 && errno != EEXIST)
-    fprintf(stderr, "errno %d: msg: %s\n", errno, strerror(errno));
+  if (this->iFd < 0) {
+    BOOST_LOG_TRIVIAL(warning)
+      << "Pager::Pager(" << sPath << "), open file errno: " <<
+      errno << ", message: " << strerror(errno);
+  }
   BOOST_ASSERT(this->iFd > 0);
 
   auto fileSize = FileUtils::fileSize(this->iFd);
@@ -39,13 +42,14 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
 }
 
 Pager::~Pager() {
+  __isDestructing = true;
   writeBackAll();
   close(this->iFd);
 
   /**
    * NOTE: DO NOT use Boost.Log in static variable destructor.
    */
-  BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
+//  BOOST_LOG_TRIVIAL(info) << "Pager of file<" << this->sFilePath << "> destroyed.";
   for (auto entry : this->mapPages) {
     // BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
     entry.second->pagerDied();
