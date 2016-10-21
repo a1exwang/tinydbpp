@@ -10,3 +10,6 @@ target_link_libraries(TestTableManager TableManager Pager Page)
 
 add_executable(TestRecordManager TestRecordManager.cpp)
 target_link_libraries(TestRecordManager RecordManager TableManager Pager Page FileUtils TestUtils)
+
+add_executable(TestBTree TestBTree.cpp)
+target_link_libraries(TestBTree RecordManager TableManager BTree Pager Page FileUtils TestUtils)

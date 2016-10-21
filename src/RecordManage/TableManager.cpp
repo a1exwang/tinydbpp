@@ -90,15 +90,19 @@ bool TableManager::isExist(std::string name) {
     return true;
 }
 
-bool TableManager::buildTable(std::string name) {
+bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
     if(isExist(name)) return false;
     else{
         string whole_name = dir + "/" + dbname + "/" + name;
         shared_ptr<Pager> ptr( new Pager(whole_name, Pager::ReadWrite) );
         shared_ptr<Page> p = ptr->getPage(0);
         shared_ptr<Page> dic_p = ptr->getPage(1);
+        if (callback) {
+            callback(ptr.get());
+        }
         ptr->writeBackAll();
         //TODO write scheme
         return true;
     }
 }
+

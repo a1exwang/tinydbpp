@@ -16,7 +16,7 @@ namespace tinydbpp {
     struct Location {
         int pageNumber;
         int loc;
-        Location(int _a, int _b) : pageNumber(_a), loc(_b) {}
+        Location(int pageNumber, int loc) : pageNumber(pageNumber), loc(loc) {}
     };
 
     class RecordManager {

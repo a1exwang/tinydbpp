@@ -75,7 +75,7 @@ namespace tinydbpp {
         }
         void changeDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
-        bool buildTable(std::string);
+        bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
         bool isExist(std::string);
     };
 

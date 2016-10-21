@@ -27,3 +27,7 @@ Pager::PageID FileUtils::filePages(int fd) {
   auto size = fileSize(fd);
   return (Pager::PageID) (size / PAGER_PAGE_SIZE);
 }
+
+uint32_t FileUtils::readUInt32LE(const char *pBuf) {
+  return *((uint32_t*)pBuf);
+}

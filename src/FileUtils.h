@@ -14,6 +14,7 @@ public:
   static int64_t fileSize(int fd);
   static Pager::PageID filePages(int fd);
   static int makeSureAtLeastFileSize(int fd, int n);
+  static uint32_t readUInt32LE(const char *pBuf);
 };
 }
 
