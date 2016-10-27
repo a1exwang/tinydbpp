@@ -35,8 +35,9 @@ private:
 };
 class SysManagement :public Statement {
 public:
-  SysManagement(Statement::Type type) :Statement(type) {}
-  SysManagement(const ParserVal& val, Statement::Type type);
+  SysManagement(Statement::Type type) :Statement(type) { }
+  SysManagement(const ParserVal& val, Statement::Type type)
+    :Statement(type), target(std::make_shared<ParserVal>(val)) { }
   virtual ~SysManagement() { }
   std::shared_ptr<const ParserVal> getTarget() const;
 private:
