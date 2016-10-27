@@ -18,3 +18,9 @@ target_link_libraries(TestBTreePlus RecordManager TableManager Pager Page FileUt
 
 add_executable(PerfBTree PerfBTree.cpp)
 target_link_libraries(PerfBTree RecordManager TableManager Pager Page FileUtils TestUtils)
+
+add_executable(TestLexer TestLexer.cpp)
+target_link_libraries(TestLexer SQLParser TestUtils)
+
+add_executable(TestParser TestParser.cpp)
+target_link_libraries(TestParser AST SQLParser TestUtils)

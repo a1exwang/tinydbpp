@@ -3,9 +3,9 @@
 //
 
 #include "TestUtils.h"
-#include <Pager.h>
+#include <Pager/Pager.h>
 #include <RecordManage/RecordManager.h>
-#include <Page.h>
+#include <Pager/Page.h>
 #include <RecordManage/TableManager.h>
 #include <vector>
 #include <iostream>

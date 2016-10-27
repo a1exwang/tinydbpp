@@ -6,7 +6,7 @@
 #define TINYDBPP_TABLEMANAGER_H
 #include <string>
 #include <config.h>
-#include <Pager.h>
+#include <Pager/Pager.h>
 #include <vector>
 #include <boost/assert.hpp>
 #include <boost/lexical_cast.hpp>

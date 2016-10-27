@@ -2,8 +2,8 @@
 // Created by chord on 16/10/14.
 //
 
-#include <Pager.h>
-#include <Page.h>
+#include <Pager/Pager.h>
+#include <Pager/Page.h>
 #include <iostream>
 #include <sstream>
 #include <boost/log/trivial.hpp>

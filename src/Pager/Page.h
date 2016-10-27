@@ -4,7 +4,7 @@
 
 #ifndef TINYDBPP_PAGE_H
 #define TINYDBPP_PAGE_H
-#include <Pager.h>
+#include <Pager/Pager.h>
 
 namespace tinydbpp {
 class Page {
