@@ -2,7 +2,7 @@
 // Created by chord on 16/10/17.
 //
 
-#include <Pager.h>
+#include <Pager/Pager.h>
 #define CATCH_CONFIG_MAIN
 #include <catch.hpp>
 #include <RecordManage/TableManager.h>

@@ -2,8 +2,8 @@
 // Created by alexwang on 10/13/16.
 //
 
-#include <Pager.h>
-#include <Page.h>
+#include <Pager/Pager.h>
+#include <Pager/Page.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <boost/log/trivial.hpp>

@@ -6,7 +6,7 @@
 #define TINYDBPP_FILEUTILS_H
 
 #include <cstdint>
-#include "Pager.h"
+#include "Pager/Pager.h"
 
 namespace tinydbpp {
 class FileUtils {

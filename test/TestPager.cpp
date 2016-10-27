@@ -3,8 +3,8 @@
 //
 
 #include "TestUtils.h"
-#include <Pager.h>
-#include <Page.h>
+#include <Pager/Pager.h>
+#include <Pager/Page.h>
 
 /* Must define this MACRO to prevent from linking error. */
 #define CATCH_CONFIG_MAIN
