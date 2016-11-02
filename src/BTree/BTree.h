@@ -7,6 +7,7 @@
 #include <exception>
 #include <functional>
 #include <sstream>
+#include <iostream>
 #include <boost/assert.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/log/trivial.hpp>
@@ -212,15 +213,12 @@ class BTree {
     void writeBack() {
       BOOST_ASSERT(keys.size() + !isLeaf == children.size());
       auto page = btree.pPager->getPage((uint32_t)this->loc.pageNumber);
-      auto buf = page->getBuf();
-      _NodeFormat *nf = (_NodeFormat*) (buf + this->loc.loc);
-      auto buf1 = toBuf();
-      BOOST_ASSERT(this->loc.loc + buf1.size() < PAGER_PAGE_SIZE);
-      memcpy(nf, toBuf().c_str(), toBuf().size());
+      BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). loc = (" << loc.pageNumber << ", " << loc.loc << ")";
 
-      page->markDirty();
-      page->writeBackIfDirty();
-      page->releaseBuf(buf);
+      RecordManager::getInstance()->updateRecordNoResize(this->btree.sTableName, this->loc, [this](std::string &record) -> bool {
+        record = toBuf();
+        return true;
+      });
     }
   private:
     void initFromBuf(const std::string &buf) {
@@ -294,6 +292,7 @@ public:
 
     Location loc = RecordManager::getInstance()->insert(
             sTableName, data, /* fixed-length */false);
+    BOOST_LOG_TRIVIAL(info) << "BTree::insertDataFrom(). loc = (" << loc.pageNumber << ", " << loc.loc << ")";
 
     targetNode->insertLocDataInLeafNode(at, key, loc);
     if (targetNode->getChildCount() == BRankMax) {

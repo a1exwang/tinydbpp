@@ -3,6 +3,7 @@
 //
 
 #include "Page.h"
+#include "../test/TestUtils.h"
 #include <FileUtils.h>
 #include <boost/assert.hpp>
 #include <boost/log/trivial.hpp>
@@ -27,7 +28,7 @@ Page::~Page() {
     BOOST_ASSERT_MSG(pPager != nullptr, "Pager destruction before Page destroyed.");
     writeBack();
   }
-  cout << "Page::~Page(). Page ID = " << this->id << endl;
+//  cout << "Page::~Page(). Page ID = " << this->id << endl;
   BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
 
   // If pBuf != nullptr, it means this page is still a weak page.
@@ -49,6 +50,9 @@ void Page::writeBack() {
   BOOST_ASSERT(this->pBuf != nullptr);
 
   auto byteWritten = write(fd, this->pBuf, PAGER_PAGE_SIZE);
+  cout << "Page::writeBack(). File = " << this->pPager->getFilePath()
+                           << ", pageID = " << this->id << endl;
+//  cout << TestUtils().hexdump(string(this->pBuf, 64));
   BOOST_ASSERT(byteWritten == PAGER_PAGE_SIZE);
   this->bDirty = false;
 

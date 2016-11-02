@@ -266,5 +266,37 @@ namespace tinydbpp {
         p->releaseBuf(data);
         return ret;
     }
+
+    void RecordManager::updateRecordNoResize(const std::string &table_name, Location loc,
+                                             std::function<bool(std::string &record)> callback) const {
+
+        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::select(), maybe you type the wrong db name.");
+        shared_ptr<Pager> ptr = td->getPager();
+        BOOST_ASSERT(ptr->getValidPageCount() > (unsigned)loc.pageNumber);
+        BOOST_ASSERT(loc.pageNumber > 0);
+        shared_ptr<Page> dic_page = ptr->getPage(1);
+        char * dic = dic_page->getBuf();
+        shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
+        // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
+        BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
+        bool fixed = (dic[loc.pageNumber - 2] & 1) == 0;
+        dic_page->releaseBuf(dic);
+        char * data = p->getBuf();
+        int now = loc.loc;
+        BOOST_ASSERT_MSG(data[now] != 0, "Record should not be a free page");//free
+        // TODO: currently, we don't support fixed length record.
+        BOOST_ASSERT(!fixed);
+        uint16_t length = *(uint16_t*)(data + loc.loc + 1);
+        BOOST_ASSERT(loc.loc + 3 + length < (int)PAGER_PAGE_SIZE);
+        auto record = string(data + loc.loc + 3, length);
+        if (callback(record)) {
+            BOOST_ASSERT_MSG(record.size() == length, "This function does not support resize!");
+            memcpy(data + loc.loc + 3, record.c_str(), length);
+            p->markDirty();
+        }
+        p->releaseBuf(data);
+    }
+
 }
 
