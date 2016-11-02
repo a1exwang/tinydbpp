@@ -6,4 +6,3 @@ add_library(Page Page.cpp)
 target_link_libraries(Page FileUtils)
 
 add_subdirectory(RecordManage)
-add_subdirectory(BTree)

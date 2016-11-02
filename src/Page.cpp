@@ -11,7 +11,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <iostream>
+#include <iostream>
 
+using namespace std;
 using namespace tinydbpp;
 
 Page::Page(Pager *pPager, Pager::PageID id, bool lazyMode)
@@ -25,9 +27,9 @@ Page::~Page() {
     BOOST_ASSERT_MSG(pPager != nullptr, "Pager destruction before Page destroyed.");
     writeBack();
   }
+  cout << "Page::~Page(). Page ID = " << this->id << endl;
   BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
 
-//  BOOST_LOG_TRIVIAL(info) << "Page::~Page(). Page ID = " << this->id;
   // If pBuf != nullptr, it means this page is still a weak page.
   if (pBuf != nullptr) {
     if (bLazyMode && pPager != nullptr)

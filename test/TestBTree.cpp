@@ -22,18 +22,23 @@ BOOST_AUTO_TEST_CASE(insert) {
   BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
 
   BTree<uint32_t, MIN, MAX> btree(indexName);
+  stringstream ss;
 
   string data;
   uint32_t key = 1;
 
-  stringstream ss;
   ss << key;
   ss >> data;
 
   btree.insert(key, data);
 
-  auto newData = btree.get(key);
-  BOOST_REQUIRE(newData == data);
+//  ss.clear();
+//  ss << 2;
+//  ss >> data;
+//  btree.insert(2, data);
+
+  auto newData = btree.get(1);
+  BOOST_REQUIRE(newData == "1");
 }
 
 

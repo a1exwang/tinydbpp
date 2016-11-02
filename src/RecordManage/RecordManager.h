@@ -40,6 +40,7 @@ namespace tinydbpp {
 
         void select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
                     std::function<void(std::vector<std::string>&, int, int)>&);
+        std::string getRecord(const std::string &table_name, Location loc) const;
     };
 
 }

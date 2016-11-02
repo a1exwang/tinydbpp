@@ -49,6 +49,7 @@ private:
  */
 template <typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
 class BTree {
+  friend class Node;
   class Node {
   public:
     /**
@@ -225,17 +226,25 @@ class BTree {
     void initFromBuf(const std::string &buf) {
       BOOST_ASSERT(buf.size() == sizeof(typename BTree<KeyT>::Node::_NodeFormat));
       _NodeFormat *nf = (_NodeFormat*)buf.c_str();
+      this->isLeaf = nf->isLeaf;
+
       for (auto i = 0; i < nf->nKeyCount; ++i) {
         keys.push_back(nf->keys[i]);
         children.push_back(Location(nf->children[i].pgNo, nf->children[i].pgOff));
       }
-      children.push_back(Location(nf->children[nf->nKeyCount].pgNo,
-                                  nf->children[nf->nKeyCount].pgOff));
+      /**
+       * For leaf node, children is actually dataLoc
+       */
+      if (!this->isLeaf) {
+        children.push_back(Location(nf->children[nf->nKeyCount].pgNo,
+                                    nf->children[nf->nKeyCount].pgOff));
+      }
 
-      this->isLeaf = nf->isLeaf;
-      auto parentLocation = parent->getLocation();
-      BOOST_ASSERT(parentLocation.loc == nf->parentPgOff &&
-                   (unsigned)parentLocation.pageNumber == nf->parentPgNo);
+      if (parent) {
+        auto parentLocation = parent->getLocation();
+        BOOST_ASSERT(parentLocation.loc == nf->parentPgOff &&
+                     (unsigned)parentLocation.pageNumber == nf->parentPgNo);
+      }
     }
   private:
     BTree btree;
@@ -278,6 +287,8 @@ public:
   bool insertDataFrom(std::shared_ptr<Node> node, KeyT key, const std::string &data) {
     uint32_t at;
     auto targetNode = searchNode(node, key, at);
+    BOOST_ASSERT(targetNode != nullptr);
+    BOOST_LOG_TRIVIAL(info) << "BTree::insertDataFrom(). targetNode.key[0] = " << targetNode->getKey(0);
     // Is a leaf node
     BOOST_ASSERT(targetNode->getKey(0) <= key);
 
@@ -319,6 +330,7 @@ public:
    * @return
    */
   std::shared_ptr<Node> getChild(std::shared_ptr<Node> parent, size_t i) {
+    BOOST_ASSERT(parent != nullptr);
     Location loc = parent->getLocation();
     return parseNodeFromPage(parent, loc.pageNumber, loc.loc);
   }
@@ -380,14 +392,10 @@ private:
     page0->releaseBuf(buf);
   }
 
-  friend class Node;
   std::shared_ptr<Node> parseNodeFromPage(std::shared_ptr<Node> parent, uint32_t pgNo, uint32_t pgOff) {
     BOOST_ASSERT(pgOff < PAGER_PAGE_SIZE);
-
-    auto rootPage = pPager->getPage(pgNo);
-    auto buf = rootPage->getBuf();
-    auto ret = std::shared_ptr<Node>(new Node(*this, parent, Location(pgNo, pgOff), std::string(buf + pgOff, nNodeDataSize)));
-    rootPage->releaseBuf(buf);
+    auto record = RecordManager::getInstance()->getRecord(sTableName, Location(pgNo, pgOff));
+    auto ret = std::shared_ptr<Node>(new Node(*this, parent, Location(pgNo, pgOff), record));
     return ret;
   }
 
