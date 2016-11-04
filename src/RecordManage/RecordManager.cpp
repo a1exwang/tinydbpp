@@ -5,12 +5,19 @@
 #include <Pager.h>
 #include <Page.h>
 #include <iostream>
+#include <sstream>
 #include <boost/log/trivial.hpp>
 #include "RecordManager.h"
 #include "TableManager.h"
 
 using namespace std;
 namespace tinydbpp {
+
+    std::string Location::toString() const {
+        std::stringstream ss;
+        ss << "(" << this->pageNumber << ", " << this->loc << ")";
+        return ss.str();
+    }
     RecordManager * RecordManager::ins = nullptr;
 
     Location* RecordManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){

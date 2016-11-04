@@ -17,6 +17,7 @@ namespace tinydbpp {
         int pageNumber;
         int loc;
         Location(int pageNumber, int loc) : pageNumber(pageNumber), loc(loc) {}
+        std::string toString() const;
     };
 
     class RecordManager {

@@ -6,3 +6,5 @@ add_library(Page Page.cpp)
 target_link_libraries(Page FileUtils TestUtils)
 
 add_subdirectory(RecordManage)
+
+

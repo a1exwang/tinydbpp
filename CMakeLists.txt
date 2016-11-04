@@ -4,12 +4,12 @@ project(tinydbpp)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 # Optimization flags
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -D_DEBUG")
-SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
+#SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -D_DEBUG")
+#SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 
-include_directories(src)
-
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/json/src)
 # Link libraries
 if(UNIX)
   if(APPLE)
