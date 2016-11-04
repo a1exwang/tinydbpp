@@ -63,17 +63,17 @@ BOOST_AUTO_TEST_CASE(insertLeaf) {
   BOOST_REQUIRE(newData == "1");
 }
 
-//BOOST_AUTO_TEST_CASE(insertGrow1) {
-//  TableManager::getInstance()->changeDB("Test");
-//  string indexName = "IndexGrow1";
-//  boost::filesystem::remove("database/Test/" + indexName);
-//  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
-//
-//  BTree<uint32_t, MIN, MAX> btree(indexName);
-//
-//  btree.insert(1, "1");
-//  btree.insert(2, "2");
-////  btree.insert(3, "3");
-//
-//  BOOST_REQUIRE(btree.get(1) == "1");
-//}
+BOOST_AUTO_TEST_CASE(insertGrow1) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexGrow1";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+  btree.insert(3, "3");
+
+  BOOST_REQUIRE(btree.get(1) == "1");
+}

@@ -15,32 +15,7 @@
 #include <Page.h>
 
 namespace tinydbpp {
-
 constexpr uint32_t BTREE_FILE_MAGIC_NUMBER = 0xdb0b42ee;
-
-class BTreeError :public std::exception {
-public:
-  BTreeError(const std::string &msg) :sMsg(msg) { }
-  virtual ~BTreeError() { }
-  virtual std::string toString() const {
-    return sMsg;
-  }
-protected:
- std::string sMsg;
-};
-template <typename KeyT>
-class KeyNotFound :public BTreeError {
-  KeyNotFound(KeyT key, const std::string &msg) :BTreeError(msg), key(key) { }
-  virtual ~KeyNotFound() { }
-  virtual std::string toString() const override {
-    std::stringstream ss;
-    ss << "KeyNotFound: " << key << std::endl;
-    ss << sMsg;
-    return ss.str();
-  }
-private:
-  KeyT key;
-};
 
 /**
  * BTree class.
@@ -50,6 +25,43 @@ private:
  */
 template <typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
 class BTree {
+  class BTreeError :public std::exception {
+  public:
+    BTreeError(const std::string &msg) :sMsg(msg) { }
+    virtual ~BTreeError() { }
+    virtual std::string toString() const {
+      return sMsg;
+    }
+  protected:
+    std::string sMsg;
+  };
+  class KeyNotFound :public BTreeError {
+  public:
+    KeyNotFound(KeyT key, const std::string &msg) :BTreeError(msg), key(key) { }
+    virtual ~KeyNotFound() { }
+    virtual std::string toString() const override {
+      std::stringstream ss;
+      ss << "KeyNotFound: " << key << std::endl;
+      ss << BTreeError::sMsg;
+      return ss.str();
+    }
+  private:
+    KeyT key;
+  };
+  class KeyDuplicated :public BTreeError {
+  public:
+    KeyDuplicated(KeyT key, const std::string &msg) :BTreeError(msg), key(key) { }
+    virtual ~KeyDuplicated() { }
+    virtual std::string toString() const override {
+      std::stringstream ss;
+      ss << "KeyDuplicated: " << key << std::endl;
+      ss << BTreeError::sMsg;
+      return ss.str();
+    }
+  private:
+    KeyT key;
+  };
+
   friend class Node;
   class Node {
   public:
@@ -99,6 +111,7 @@ class BTree {
       return (uint32_t)children.size();
     }
     KeyT getKey(size_t i) const {
+      BOOST_ASSERT(i < keys.size());
       return keys[i];
     }
     uint32_t getKeyCount() const {
@@ -121,6 +134,12 @@ class BTree {
       BOOST_ASSERT(isLeaf);
       keys.insert(keys.begin() + at, key);
       children.insert(children.begin() + at, locData);
+    }
+
+    void insertNodeAt(size_t at, std::shared_ptr<Node> node) {
+      // TODO: offset by 1 error ?
+      keys.insert(keys.begin() + at + 1, node->getKey(0));
+      children.insert(children.begin() + at + 2, node->getLocation());
     }
 
     /**
@@ -212,15 +231,88 @@ class BTree {
     }
     void writeBack() {
       BOOST_ASSERT(keys.size() + !isLeaf == children.size());
-      auto page = btree.pPager->getPage((uint32_t)this->loc.pageNumber);
-      BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). loc = (" << loc.pageNumber << ", " << loc.loc << ")";
+      /**
+       * This node is newly created.
+       */
+      if (loc.pageNumber == 0) {
+        std::string data = toBuf();
+        this->loc = RecordManager::getInstance()->insert(this->btree.sTableName, data, /* fixed-length*/false);
+        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Created at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
+      }
+      else {
+        auto page = btree.pPager->getPage((uint32_t)this->loc.pageNumber);
+        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Updated at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
 
-      RecordManager::getInstance()->updateRecordNoResize(this->btree.sTableName, this->loc, [this](std::string &record) -> bool {
-        record = toBuf();
-        return true;
-      });
+        RecordManager::getInstance()->updateRecordNoResize(this->btree.sTableName, this->loc, [this](std::string &record) -> bool {
+          record = toBuf();
+          return true;
+        });
+      }
+    }
+
+    void splitNode() {
+      BOOST_ASSERT(getKeyCount() == BRankMax);
+      if (isLeaf) {
+        size_t newLeftNodeSize = BRankMax / 2;
+//        size_t newRightNodeSize = BRankMax - newLeftNodeSize;
+        auto itRightKeysBegin = keys.begin() + newLeftNodeSize;
+        auto itRightKeysEnd = keys.end();
+        auto itRightChildrenBegin = children.begin() + newLeftNodeSize;
+        auto itRightChildrenEnd = children.end();
+
+        /**
+         * Create right node
+         */
+        auto ret = std::shared_ptr<Node>(new Node(btree, nullptr, 0));
+        ret->isLeaf = true;
+        ret->keys = std::vector<KeyT>(itRightKeysBegin, itRightKeysEnd);
+        ret->children = std::vector<Location>(itRightChildrenBegin, itRightChildrenEnd);
+        ret->writeBack();
+
+        keys.erase(itRightKeysBegin, itRightKeysEnd);
+        children.erase(itRightChildrenBegin, itRightChildrenEnd);
+        this->writeBack();
+        if (parent == nullptr) {
+          /**
+           * Root node is full. We need a new root node.
+           */
+          auto newRoot = std::shared_ptr<Node>(new Node(btree, nullptr, *itRightKeysBegin));
+          newRoot->isLeaf = false;
+          newRoot->children.push_back(this->loc);
+          newRoot->children.push_back(ret->loc);
+          newRoot->writeBack();
+
+          /**
+           * Since new root node is created, we update his two children's parentLoc
+           */
+          this->parent = newRoot;
+          this->writeBack();
+          ret->parent = newRoot;
+          this->writeBack();
+          btree.storeRootLocation(newRoot->loc);
+        }
+        else {
+          auto pos = ret->getParent()->getChildPos(this->getKey(0));
+          ret->getParent()->insertNodeAt(pos, ret);
+          if (parent->getKeyCount() >= BRankMax) {
+            parent->splitNode();
+          }
+        }
+      }
+      else {
+        BOOST_ASSERT(0);
+      }
     }
   private:
+    size_t getChildPos(KeyT key) const {
+      // FIXME: O(N) -> O(log(N)) with binary search
+      for (size_t i = 0; i < keys.size(); ++i) {
+        if (keys[i] == key) {
+          return i;
+        }
+      }
+      BOOST_ASSERT(false);
+    }
     void initFromBuf(const std::string &buf) {
       BOOST_ASSERT(buf.size() == sizeof(typename BTree<KeyT>::Node::_NodeFormat));
       _NodeFormat *nf = (_NodeFormat*)buf.c_str();
@@ -285,7 +377,15 @@ public:
   bool insertDataFrom(std::shared_ptr<Node> node, KeyT key, const std::string &data) {
     uint32_t at;
     auto targetNode = searchNode(node, key, at);
+    /**
+     * Insertion position could be [0, KeyCount].
+     */
+    BOOST_ASSERT(at <= targetNode->getKeyCount());
     BOOST_ASSERT(targetNode != nullptr);
+    BOOST_ASSERT(targetNode->isLeafNode());
+    if (at < targetNode->getKeyCount() && targetNode->getKey(at) == key) {
+      throw KeyDuplicated(key, "");
+    }
     BOOST_LOG_TRIVIAL(info) << "BTree::insertDataFrom(). targetNode.key[0] = " << targetNode->getKey(0);
     // Is a leaf node
     BOOST_ASSERT(targetNode->getKey(0) <= key);
@@ -296,7 +396,7 @@ public:
 
     targetNode->insertLocDataInLeafNode(at, key, loc);
     if (targetNode->getChildCount() == BRankMax) {
-      splitNode(targetNode);
+      splitLeafNode(targetNode);
     }
     else {
       targetNode->writeBack();
@@ -356,9 +456,8 @@ public:
   }
 
 private:
-  void splitNode(std::shared_ptr<Node> node) {
-    // TODO
-    BOOST_ASSERT(0);
+  void splitLeafNode(std::shared_ptr<Node> node) {
+    node->splitNode();
   }
   void insertAsRoot(KeyT key, const std::string &data) {
     Location dataLoc = RecordManager::getInstance()->insert(
@@ -432,6 +531,13 @@ private:
 
     return parseNodeFromPage(nullptr, pgNo, pgOff);
   }
+  /**
+   * Search for the node of key `key`, returns the nearest node that targetNode.keys[0] <= key.
+   * @param node
+   * @param key
+   * @param at: OUT. The position where the new key should be inserted.
+   * @return targetNode
+   */
   std::shared_ptr<Node> searchNode(std::shared_ptr<Node> node, KeyT key, uint32_t &at) {
     BOOST_ASSERT(node->getKeyCount() > 0);
     KeyT firstKey = node->getKey(0);
