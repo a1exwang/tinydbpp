@@ -126,6 +126,11 @@ class BTree {
       BOOST_ASSERT(i < keys.size());
       return keys[i];
     }
+    Location getDataLocation(size_t i) const {
+      BOOST_ASSERT(this->isLeaf);
+      BOOST_ASSERT(i < children.size());
+      return children[i];
+    }
     uint32_t getKeyCount() const {
       return (uint32_t)keys.size();
     }
@@ -478,7 +483,7 @@ class BTree {
       }
     }
   private:
-    BTree btree;
+    BTree &btree;
     std::shared_ptr<Node> parent;
     Location loc;
     Location parentLoc;
@@ -518,7 +523,8 @@ public:
    */
   bool insertDataFrom(std::shared_ptr<Node> node, KeyT key, const std::string &data) {
     uint32_t at;
-    auto targetNode = searchNode(node, key, at);
+    bool found;
+    auto targetNode = searchNode(node, key, at, found);
     /**
      * Insertion position could be [0, KeyCount].
      */
@@ -532,7 +538,7 @@ public:
                                                      (at == targetNode->getKeyCount() ?
                                                       0 :
                                                       targetNode->getKey(at));
-    if (at < targetNode->getKeyCount() && targetNode->getKey(at) == key) {
+    if (found) {
       throw KeyDuplicated(key, "");
     }
     // Is a leaf node
@@ -553,9 +559,18 @@ public:
     return true;
   }
 
-  std::string get(KeyT key) const {
-    auto ret = std::string("1");
-    return ret;
+  std::string get(KeyT key) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      auto record = RecordManager::getInstance()->getRecord(this->sTableName, dataLoc);
+      return record;
+    }
   }
   void remove(KeyT key);
   void update(KeyT key, const std::string &data);
@@ -682,13 +697,16 @@ private:
     return parseNodeFromPage(nullptr, Location((int)pgNo, (int)pgOff));
   }
   /**
-   * Search for the node of key `key`, returns the nearest node that targetNode.keys[0] <= key.
+   * Search for the node of key `key`, returns the node where `key` is in.
    * @param node
    * @param key
-   * @param at: OUT. The position where the new key should be inserted.
+   * @param at: OUT.
+   *    if key exists, `at` is the index of `key`
+   *    otherwise, `at` is the position where the `key` should be inserted.
    * @return targetNode
    */
-  std::shared_ptr<Node> searchNode(std::shared_ptr<Node> node, KeyT key, uint32_t &at) {
+  std::shared_ptr<Node> searchNode(std::shared_ptr<Node> node, KeyT key, uint32_t &at, bool &found) {
+    found = false;
     BOOST_ASSERT(node->getKeyCount() > 0);
     KeyT firstKey = node->getKey(0);
     KeyT lastKey = node->getKey(node->getKeyCount() - 1);
@@ -697,13 +715,28 @@ private:
         at = 0;
         return node;
       }
-      else if (key >= lastKey) {
+      else if (key == firstKey) {
+        at = 0;
+        found = true;
+        return node;
+      }
+      else if (key > lastKey) {
         at = node->getKeyCount();
+        return node;
+      }
+      else if (key == lastKey){
+        found = true;
+        at = node->getKeyCount() - 1;
         return node;
       }
       else {
         for (uint32_t i = 0; i < node->getKeyCount() - 1; ++i) {
-          if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
+          if (node->getKey(i) == key) {
+            found = true;
+            at = i;
+            return node;
+          }
+          else if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
             at = i + 1;
             return node;
           }
@@ -715,16 +748,16 @@ private:
 
     BOOST_ASSERT(node->getKeyCount() + 1 == node->getChildCount());
     if (key < firstKey) {
-      return searchNode(getChild(node, 0), key, at);
+      return searchNode(getChild(node, 0), key, at, found);
     }
     else if (key >= lastKey) {
-      return searchNode(getChild(node, node->getChildCount() - 1), key, at);
+      return searchNode(getChild(node, node->getChildCount() - 1), key, at, found);
     }
     else {
       for (uint32_t i = 0; i < node->getKeyCount() - 1; ++i) {
         if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
           at = i;
-          return searchNode(getChild(node, i + 1), key, at);
+          return searchNode(getChild(node, i + 1), key, at, found);
         }
       }
 
