@@ -11,6 +11,7 @@
 #include <memory>
 
 namespace tinydbpp {
+class PagerPerfMon;
 
 /**
  * Default page size 4KiB.
@@ -56,6 +57,7 @@ class Page;
  *
  */
 class Pager {
+  friend class PagerPerfMon;
 public:
   /**
    * OpenFlag for the constructor of Pager.
@@ -129,6 +131,7 @@ public:
   void noMoreWeakPage(PageID id);
 
   void writeBackAll();
+  PagerPerfMon *getPerfMon() { return pPerfMon; }
 private:
 
   std::map<PageID, std::shared_ptr<Page>> mapPages;
@@ -147,6 +150,8 @@ private:
   Pager::PageID maxValidPages;
 
   bool __isDestructing = false;
+
+  PagerPerfMon *pPerfMon;
 };
 }
 

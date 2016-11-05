@@ -18,6 +18,8 @@ namespace tinydbpp {
         int loc;
         Location(int pageNumber, int loc) : pageNumber(pageNumber), loc(loc) {}
         std::string toString() const;
+        bool operator==(const Location &rhs) const;
+        bool operator!=(const Location &rhs) const;
     };
 
     class RecordManager {

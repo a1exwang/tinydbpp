@@ -27,6 +27,7 @@ constexpr uint32_t BTREE_FILE_MAGIC_NUMBER = 0xdb0b42ee;
  */
 template <typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
 class BTree {
+public:
   class BTreeError :public std::exception {
   public:
     BTreeError(const std::string &msg) :sMsg(msg) { }
@@ -126,6 +127,11 @@ class BTree {
       BOOST_ASSERT(i < keys.size());
       return keys[i];
     }
+    Location getDataLocation(size_t i) const {
+      BOOST_ASSERT(this->isLeaf);
+      BOOST_ASSERT(i < children.size());
+      return children[i];
+    }
     uint32_t getKeyCount() const {
       return (uint32_t)keys.size();
     }
@@ -181,11 +187,11 @@ class BTree {
       children.insert(children.begin() + at, locData);
     }
 
-    void insertNodeAt(size_t at, std::shared_ptr<Node> node) {
+    void insertNodeAt(size_t keyAt, KeyT key, std::shared_ptr<Node> node) {
       BOOST_ASSERT(!isLeaf);
-      BOOST_ASSERT(at <= keys.size());
-      keys.insert(keys.begin() + at, node->getKey(0));
-      children.insert(children.begin() + at + 1, node->getLocation());
+      BOOST_ASSERT(keyAt <= keys.size());
+      keys.insert(keys.begin() + keyAt, key);
+      children.insert(children.begin() + keyAt + 1, node->getLocation());
     }
 
     /**
@@ -283,17 +289,13 @@ class BTree {
          */
         std::string data = toBuf();
         this->loc = RecordManager::getInstance()->insert(this->btree.sTableName, data, /* fixed-length*/false);
-        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Created at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
-        std::cout << TestUtils().hexdump(data);
       }
       else {
         /**
          * Update existing node.
          */
         auto page = btree.pPager->getPage((uint32_t)this->loc.pageNumber);
-        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Updated at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
         std::string data = toBuf();
-        std::cout << TestUtils().hexdump(data);
 
         RecordManager::getInstance()->updateRecordNoResize(this->btree.sTableName, this->loc, [&data](std::string &record) -> bool {
           record = data;
@@ -352,8 +354,8 @@ class BTree {
         }
         else {
           // this is Non-root node
-          auto pos = this->parent->getChildPos(this->getKey(0));
-          ret->getParent()->insertNodeAt(pos, ret);
+          auto pos = this->parent->getChildPos(this->getLocation());
+          this->parent->insertNodeAt(pos, newParentKey, ret);
           if (parent->getKeyCount() >= BRankMax) {
             parent->splitNode();
           }
@@ -410,11 +412,9 @@ class BTree {
           btree.storeRootLocation(newRoot->loc);
         }
         else {
-          // TODO
-          BOOST_ASSERT(false);
           // this is Non-root node
-          auto pos = this->parent->getChildPos(this->getKey(0));
-          ret->getParent()->insertNodeAt(pos, ret);
+          auto pos = this->parent->getChildPos(this->getLocation());
+          ret->getParent()->insertNodeAt(pos, newParentKey, ret);
           if (parent->getKeyCount() >= BRankMax) {
             parent->splitNode();
           }
@@ -444,14 +444,15 @@ class BTree {
       });
     }
 
-    size_t getChildPos(KeyT key) const {
+    size_t getChildPos(Location loc) const {
       // FIXME: O(N) -> O(log(N)) with binary search
-      for (size_t i = 0; i < keys.size(); ++i) {
-        if (keys[i] == key) {
-          return i + 1;
+      BOOST_ASSERT(!isLeaf);
+      for (size_t i = 0; i < children.size(); ++i) {
+        if (children[i] == loc) {
+          return i;
         }
       }
-      BOOST_ASSERT(key < keys[0]);
+      BOOST_ASSERT(false);
       return 0;
     }
     void initFromBuf(const std::string &buf) {
@@ -479,7 +480,7 @@ class BTree {
       }
     }
   private:
-    BTree btree;
+    BTree &btree;
     std::shared_ptr<Node> parent;
     Location loc;
     Location parentLoc;
@@ -519,7 +520,8 @@ public:
    */
   bool insertDataFrom(std::shared_ptr<Node> node, KeyT key, const std::string &data) {
     uint32_t at;
-    auto targetNode = searchNode(node, key, at);
+    bool found;
+    auto targetNode = searchNode(node, key, at, found);
     /**
      * Insertion position could be [0, KeyCount].
      */
@@ -533,7 +535,7 @@ public:
                                                      (at == targetNode->getKeyCount() ?
                                                       0 :
                                                       targetNode->getKey(at));
-    if (at < targetNode->getKeyCount() && targetNode->getKey(at) == key) {
+    if (found) {
       throw KeyDuplicated(key, "");
     }
     // Is a leaf node
@@ -554,12 +556,33 @@ public:
     return true;
   }
 
-  std::string get(KeyT key) const {
-    auto ret = std::string("1");
-    return ret;
+  std::string get(KeyT key) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      auto record = RecordManager::getInstance()->getRecord(this->sTableName, dataLoc);
+      return record;
+    }
   }
   void remove(KeyT key);
-  void update(KeyT key, const std::string &data);
+  void updateNoResize(KeyT key, std::function<bool (std::string &record)> callback) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      RecordManager::getInstance()->updateRecordNoResize(this->sTableName, dataLoc, callback);
+    }
+  }
+
   /**
    * Traverse the btree. Read-only.
    * @param callback
@@ -683,13 +706,16 @@ private:
     return parseNodeFromPage(nullptr, Location((int)pgNo, (int)pgOff));
   }
   /**
-   * Search for the node of key `key`, returns the nearest node that targetNode.keys[0] <= key.
+   * Search for the node of key `key`, returns the node where `key` is in.
    * @param node
    * @param key
-   * @param at: OUT. The position where the new key should be inserted.
+   * @param at: OUT.
+   *    if key exists, `at` is the index of `key`
+   *    otherwise, `at` is the position where the `key` should be inserted.
    * @return targetNode
    */
-  std::shared_ptr<Node> searchNode(std::shared_ptr<Node> node, KeyT key, uint32_t &at) {
+  std::shared_ptr<Node> searchNode(std::shared_ptr<Node> node, KeyT key, uint32_t &at, bool &found) {
+    found = false;
     BOOST_ASSERT(node->getKeyCount() > 0);
     KeyT firstKey = node->getKey(0);
     KeyT lastKey = node->getKey(node->getKeyCount() - 1);
@@ -698,13 +724,28 @@ private:
         at = 0;
         return node;
       }
-      else if (key >= lastKey) {
+      else if (key == firstKey) {
+        at = 0;
+        found = true;
+        return node;
+      }
+      else if (key > lastKey) {
         at = node->getKeyCount();
+        return node;
+      }
+      else if (key == lastKey){
+        found = true;
+        at = node->getKeyCount() - 1;
         return node;
       }
       else {
         for (uint32_t i = 0; i < node->getKeyCount() - 1; ++i) {
-          if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
+          if (node->getKey(i) == key) {
+            found = true;
+            at = i;
+            return node;
+          }
+          else if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
             at = i + 1;
             return node;
           }
@@ -716,16 +757,16 @@ private:
 
     BOOST_ASSERT(node->getKeyCount() + 1 == node->getChildCount());
     if (key < firstKey) {
-      return searchNode(getChild(node, 0), key, at);
+      return searchNode(getChild(node, 0), key, at, found);
     }
     else if (key >= lastKey) {
-      return searchNode(getChild(node, node->getChildCount() - 1), key, at);
+      return searchNode(getChild(node, node->getChildCount() - 1), key, at, found);
     }
     else {
       for (uint32_t i = 0; i < node->getKeyCount() - 1; ++i) {
         if (node->getKey(i) <= key && key < node->getKey(i + 1)) {
           at = i;
-          return searchNode(getChild(node, i + 1), key, at);
+          return searchNode(getChild(node, i + 1), key, at, found);
         }
       }
 
@@ -740,6 +781,10 @@ public:
     dump(j, getRoot());
     os << j.dump(2);
   }
+  Pager *getPager() {
+    return pPager.get();
+  }
+
 private:
   void dump(nlohmann::json &j, std::shared_ptr<Node> node) {
     BOOST_ASSERT(node != nullptr);
@@ -749,7 +794,6 @@ private:
       for (size_t i = 0; i < node->getChildCount(); ++i) {
         auto childObj = nlohmann::json::object();
         auto child = getChild(node, i);
-        auto childLoc = node->getChildLocation(i);
         dump(childObj, child);
         j["children"].push_back(childObj);
       }

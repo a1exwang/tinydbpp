@@ -18,6 +18,14 @@ namespace tinydbpp {
         ss << "(" << this->pageNumber << ", " << this->loc << ")";
         return ss.str();
     }
+
+    bool Location::operator==(const Location &rhs) const {
+        return this->pageNumber == rhs.pageNumber && this->loc == rhs.loc;
+    }
+    bool Location::operator!=(const Location &rhs) const {
+        return !this->operator ==(rhs);
+    }
+
     RecordManager * RecordManager::ins = nullptr;
 
     Location* RecordManager::tryInsert(shared_ptr<Page> data_page, const std::string &record, bool fixed){
@@ -101,7 +109,7 @@ namespace tinydbpp {
         shared_ptr<Page> new_page = ptr->getPage(pages);
         char* new_buf = new_page->getBuf();
         if(!fixed){
-            dic[pages - 1] = 1;
+            dic[pages - 2] = 1;
             dic_page->markDirty();
             *(new_buf) = 0;
             *(short*)(new_buf + 1) = (short)(PAGER_PAGE_SIZE - 3);
