@@ -27,6 +27,7 @@ constexpr uint32_t BTREE_FILE_MAGIC_NUMBER = 0xdb0b42ee;
  */
 template <typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
 class BTree {
+public:
   class BTreeError :public std::exception {
   public:
     BTreeError(const std::string &msg) :sMsg(msg) { }
@@ -288,17 +289,13 @@ class BTree {
          */
         std::string data = toBuf();
         this->loc = RecordManager::getInstance()->insert(this->btree.sTableName, data, /* fixed-length*/false);
-        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Created at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
-        std::cout << TestUtils().hexdump(data);
       }
       else {
         /**
          * Update existing node.
          */
         auto page = btree.pPager->getPage((uint32_t)this->loc.pageNumber);
-        BOOST_LOG_TRIVIAL(info) << "BTree::Node::writeBack(). Updated at loc = (" << loc.pageNumber << ", " << loc.loc << ")";
         std::string data = toBuf();
-        std::cout << TestUtils().hexdump(data);
 
         RecordManager::getInstance()->updateRecordNoResize(this->btree.sTableName, this->loc, [&data](std::string &record) -> bool {
           record = data;
@@ -573,7 +570,19 @@ public:
     }
   }
   void remove(KeyT key);
-  void update(KeyT key, const std::string &data);
+  void updateNoResize(KeyT key, std::function<bool (std::string &record)> callback) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      RecordManager::getInstance()->updateRecordNoResize(this->sTableName, dataLoc, callback);
+    }
+  }
+
   /**
    * Traverse the btree. Read-only.
    * @param callback
@@ -772,6 +781,10 @@ public:
     dump(j, getRoot());
     os << j.dump(2);
   }
+  Pager *getPager() {
+    return pPager.get();
+  }
+
 private:
   void dump(nlohmann::json &j, std::shared_ptr<Node> node) {
     BOOST_ASSERT(node != nullptr);
