@@ -90,14 +90,21 @@ namespace tinydbpp {
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char* dic = dic_page->getBuf();
         int pages = ptr->getValidPageCount();
-        for(int i = 2; i < pages; i++){
-            char state = dic[i - 2];
+        for(int i = 1, index = 0; i < pages; i++){
+            if(index == PAGER_PAGE_SIZE){
+                dic_page->releaseBuf(dic);
+                dic_page = ptr->getPage(i);
+                dic = dic_page->getBuf();
+                index = 0;
+                continue;
+            }
+            char state = dic[index];
             if( (fixed && (state & 1) == 0 && (state & 2) == 0) ||
                 (!fixed && (state & 1) == 1 && (state & 2) == 0) )
             {
                 Location* result = tryInsert(ptr->getPage(i), record, fixed);
                 if(result == NULL){
-                    dic[i - 2] |= 2;
+                    dic[index] |= 2;
                     dic_page->markDirty();
                 }else{
                     ret = *result;
@@ -105,12 +112,20 @@ namespace tinydbpp {
                     return ret;
                 }
             }
+            index++;
         }
+        dic_page->releaseBuf(dic);
+        // store in a new page
+        if(pages % (PAGER_PAGE_SIZE + 1) == 1) // if next page is a dictionary page, skip
+            pages ++;
         shared_ptr<Page> new_page = ptr->getPage(pages);
         char* new_buf = new_page->getBuf();
         if(!fixed){
-            dic[pages - 2] = 1;
+            dic_page = ptr->getPage(((pages - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
+            dic = dic_page->getBuf();
+            dic[(pages - 1) % PAGER_PAGE_SIZE - 1] = 1; // find the position is dictionary page
             dic_page->markDirty();
+            dic_page->releaseBuf(dic);
             *(new_buf) = 0;
             *(short*)(new_buf + 1) = (short)(PAGER_PAGE_SIZE - 3);
         }else{
@@ -118,12 +133,10 @@ namespace tinydbpp {
             *(new_buf + 2) = 0;
             *(short*)(new_buf + 3) = (short)(PAGER_PAGE_SIZE - 7);
             *(short*)(new_buf + 5) = (short)0;
-//            cout << *(short*)(new_buf + 3)<<endl;
             new_page->markDirty();
         }
         new_page->releaseBuf(new_buf);
         ret = *tryInsert(new_page, record, fixed);
-        dic_page->releaseBuf(dic);
         return ret;
     }
     void RecordManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
@@ -132,20 +145,20 @@ namespace tinydbpp {
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");
         shared_ptr<Pager> ptr = td->getPager();
-        shared_ptr<Page> dic_page = ptr->getPage(1);
-        char * dic = dic_page->getBuf();
-        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &td, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &td, &table_name, &ptr](std::vector<std::string>& vec, int pageID, int now){
             solver(vec);
             bool fixed_res;
             string res = td->embed(vec, fixed_res);
-            bool fixed = (dic[pageID - 2] & 1) == 0;
+            shared_ptr<Page> dic_page = ptr->getPage(((pageID - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
+            char * dic = dic_page->getBuf();
+            bool fixed = (dic[(pageID - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
+            dic_page->releaseBuf(dic);
             if(fixed && fixed_res){
                 shared_ptr<Page> p = ptr->getPage(pageID);
                 char * data = p->getBuf();
                 memcpy(data + now + 1, res.c_str(), res.length());
                 p->markDirty();
                 p->releaseBuf(data);
-                dic_page->markDirty();
             }else {
                 RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
                 RecordManager::getInstance()->insert(table_name, res, fixed_res);
@@ -153,7 +166,6 @@ namespace tinydbpp {
             return;
         };
         select(table_name, checker, update_func);
-        dic_page->releaseBuf(dic);
         return;
     }
     void RecordManager::delOneRecord(const std::string &table_name, int pageID, int now, bool fixed){
@@ -178,20 +190,20 @@ namespace tinydbpp {
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
-        shared_ptr<Page> dic_page = ptr->getPage(1);
-        char * dic = dic_page->getBuf();
-        std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &table_name, &ptr, &dic_page, &dic](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &table_name, &ptr](std::vector<std::string>& vec, int pageID, int now){
              if (solver)
                solver(vec);
-             bool fixed = (dic[pageID - 2] & 1) == 0;
+             shared_ptr<Page> dic_page = ptr->getPage(((pageID - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
+             char * dic = dic_page->getBuf();
+             bool fixed = (dic[(pageID - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
              RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
              if((dic[pageID - 2] & 2) == 1)
                 dic[pageID -2] ^= 2;
              dic_page->markDirty();
+             dic_page->releaseBuf(dic);
              return;
          };
          select(table_name, checker, del_func);
-         dic_page->releaseBuf(dic);
          return;
     }
 
@@ -231,11 +243,16 @@ namespace tinydbpp {
         int pages = ptr->getValidPageCount();
         shared_ptr<Page> dic_page = ptr->getPage(1);
         char * dic = dic_page->getBuf();
-        for(int i = 2;i < pages;i++){
+        for(int i = 2, index = 0;i < pages;i++){
+            if(index == PAGER_PAGE_SIZE){
+                dic_page->releaseBuf(dic);
+                dic_page = ptr->getPage(i);
+                dic = dic_page->getBuf();
+                index = 0;
+                continue;
+            }
             shared_ptr<Page> p = ptr->getPage(i);
-            // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
-            BOOST_ASSERT(i - 2 < (int)PAGER_PAGE_SIZE);
-            bool fixed = (dic[i - 2] & 1) == 0;
+            bool fixed = (dic[index] & 1) == 0;
             char * data = p->getBuf();
             int now = fixed? 2 : 0;
             while(now < (int)PAGER_PAGE_SIZE){
@@ -250,6 +267,7 @@ namespace tinydbpp {
                 }
             }
             p->releaseBuf(data);
+            index ++;
         }
         dic_page->releaseBuf(dic);
     }
@@ -260,12 +278,12 @@ namespace tinydbpp {
         shared_ptr<Pager> ptr = td->getPager();
         BOOST_ASSERT(ptr->getValidPageCount() > (unsigned)loc.pageNumber);
         BOOST_ASSERT(loc.pageNumber > 0);
-        shared_ptr<Page> dic_page = ptr->getPage(1);
+        shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
         char * dic = dic_page->getBuf();
         shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
         // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
-        BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
-        bool fixed = (dic[loc.pageNumber - 2] & 1) == 0;
+        //BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
+        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
         dic_page->releaseBuf(dic);
         char * data = p->getBuf();
         int now = loc.loc;
@@ -287,12 +305,12 @@ namespace tinydbpp {
         shared_ptr<Pager> ptr = td->getPager();
         BOOST_ASSERT(ptr->getValidPageCount() > (unsigned)loc.pageNumber);
         BOOST_ASSERT(loc.pageNumber > 0);
-        shared_ptr<Page> dic_page = ptr->getPage(1);
+        shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
         char * dic = dic_page->getBuf();
         shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
         // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
-        BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
-        bool fixed = (dic[loc.pageNumber - 2] & 1) == 0;
+        //BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
+        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
         dic_page->releaseBuf(dic);
         char * data = p->getBuf();
         int now = loc.loc;
