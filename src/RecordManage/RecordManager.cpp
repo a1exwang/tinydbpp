@@ -132,9 +132,6 @@ namespace tinydbpp {
             string res = td->embed(vec, fixed_res);
             bool fixed = (dic[pageID - 2] & 1) == 0;
             if(fixed && fixed_res){
-                // TODO: Should prevent user from changing record length in fixed-length pages.
-                BOOST_ASSERT_MSG((int)res.size() == td->len,
-                                 "RecordManager::update(). Maybe your new records does not fit in this fixed-length record slot.");
                 shared_ptr<Page> p = ptr->getPage(pageID);
                 char * data = p->getBuf();
                 memcpy(data + now + 1, res.c_str(), res.length());
