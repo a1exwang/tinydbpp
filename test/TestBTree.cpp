@@ -91,7 +91,9 @@ BOOST_AUTO_TEST_CASE(insertSplitInner) {
   btree.insert(4, "4");
   btree.insert(5, "5");
   btree.insert(6, "6");
-//  btree.insert(7, "7");
+  btree.insert(7, "7");
+  btree.insert(8, "8");
+  btree.insert(9, "9");
 
   stringstream ss;
   btree.dump(ss);

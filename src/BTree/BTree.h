@@ -181,11 +181,11 @@ class BTree {
       children.insert(children.begin() + at, locData);
     }
 
-    void insertNodeAt(size_t at, std::shared_ptr<Node> node) {
+    void insertNodeAt(size_t keyAt, KeyT key, std::shared_ptr<Node> node) {
       BOOST_ASSERT(!isLeaf);
-      BOOST_ASSERT(at <= keys.size());
-      keys.insert(keys.begin() + at, node->getKey(0));
-      children.insert(children.begin() + at + 1, node->getLocation());
+      BOOST_ASSERT(keyAt <= keys.size());
+      keys.insert(keys.begin() + keyAt, key);
+      children.insert(children.begin() + keyAt + 1, node->getLocation());
     }
 
     /**
@@ -352,8 +352,8 @@ class BTree {
         }
         else {
           // this is Non-root node
-          auto pos = this->parent->getChildPos(this->getKey(0));
-          ret->getParent()->insertNodeAt(pos, ret);
+          auto pos = this->parent->getChildPos(this->getLocation());
+          this->parent->insertNodeAt(pos, newParentKey, ret);
           if (parent->getKeyCount() >= BRankMax) {
             parent->splitNode();
           }
@@ -410,11 +410,9 @@ class BTree {
           btree.storeRootLocation(newRoot->loc);
         }
         else {
-          // TODO
-          BOOST_ASSERT(false);
           // this is Non-root node
-          auto pos = this->parent->getChildPos(this->getKey(0));
-          ret->getParent()->insertNodeAt(pos, ret);
+          auto pos = this->parent->getChildPos(this->getLocation());
+          ret->getParent()->insertNodeAt(pos, newParentKey, ret);
           if (parent->getKeyCount() >= BRankMax) {
             parent->splitNode();
           }
@@ -444,14 +442,15 @@ class BTree {
       });
     }
 
-    size_t getChildPos(KeyT key) const {
+    size_t getChildPos(Location loc) const {
       // FIXME: O(N) -> O(log(N)) with binary search
-      for (size_t i = 0; i < keys.size(); ++i) {
-        if (keys[i] == key) {
-          return i + 1;
+      BOOST_ASSERT(!isLeaf);
+      for (size_t i = 0; i < children.size(); ++i) {
+        if (children[i] == loc) {
+          return i;
         }
       }
-      BOOST_ASSERT(key < keys[0]);
+      BOOST_ASSERT(false);
       return 0;
     }
     void initFromBuf(const std::string &buf) {
@@ -749,7 +748,6 @@ private:
       for (size_t i = 0; i < node->getChildCount(); ++i) {
         auto childObj = nlohmann::json::object();
         auto child = getChild(node, i);
-        auto childLoc = node->getChildLocation(i);
         dump(childObj, child);
         j["children"].push_back(childObj);
       }
