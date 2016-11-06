@@ -6,6 +6,8 @@
 #include "FileUtils.h"
 #include <fcntl.h>
 #include <unistd.h>
+#include <cstdlib>
+#include <cstring>
 #include <sys/stat.h>
 using namespace tinydbpp;
 

@@ -502,6 +502,12 @@ public:
   ~BTree() {
   }
 
+  /**
+   * Insert into btree.
+   * NOTE: data could be variable length string
+   * @param key
+   * @param data
+   */
   void insert(KeyT key, const std::string &data) {
     auto root = getRoot();
     if (root == nullptr) {
@@ -509,6 +515,120 @@ public:
     }
     else {
       insertDataFrom(root, key, data);
+    }
+  }
+
+  /**
+   * Get data with key.
+   * @param key
+   * @return data
+   * @throws KeyDuplicated
+   */
+  std::string get(KeyT key) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      auto record = RecordManager::getInstance()->getRecord(this->sTableName, dataLoc);
+      return record;
+    }
+  }
+  /**
+   * Update without resizing data.
+   * @param key
+   * @param callback: returns true if record is actually changed.
+   * @throws KeyNotFound
+   */
+  void updateNoResize(KeyT key, std::function<bool (std::string &record)> callback) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      RecordManager::getInstance()->updateRecordNoResize(this->sTableName, dataLoc, callback);
+    }
+  }
+  /**
+   * Remove a key.
+   * @param key
+   * @throws KeyNotFound
+   */
+  void remove(KeyT key) {
+    BOOST_ASSERT(false);
+  }
+
+  /**
+   * Traverse the btree. Read-only.
+   * @param callback
+   */
+  void traverse(std::function<void (KeyT, const std::string&)> callback) {
+    std::shared_ptr<Node> root = getRoot();
+    traverseLeafNode(root, [callback](KeyT key, std::string &record) -> bool {
+      callback(key, record);
+      return false;
+    });
+  }
+
+  /**
+   * Traverse the btree.
+   * @param callback: Returns true if this node is changed.
+   */
+  void traverse(std::function<bool (KeyT key, std::string &data)> callback) {
+    std::shared_ptr<Node> root = getRoot();
+    traverseLeafNode(root, callback);
+  }
+
+  /**
+   * Create a new BTree file.
+   * @param indexName
+   */
+  static void setupBTree(const std::string &indexName) {
+    TableManager::getInstance()->buildTable(indexName, [](Pager *pPager) -> void {
+      auto page0 = pPager->getPage(0);
+      auto buf = page0->getBuf();
+
+      auto p0 = (_Page0*) buf;
+      p0->magic = BTREE_FILE_MAGIC_NUMBER;
+      p0->nodeSize = sizeof(typename Node::_NodeFormat);
+      /**
+       * As a correct root pager can never be in page zero,
+       *  we use 0 for representing there's no root page.
+       *  That is to say, this btree is totally empty.
+       */
+      p0->rootNodeOff = 0;
+      p0->rootNodePgNo = 0;
+
+      page0->markDirty();
+      page0->releaseBuf(buf);
+    });
+  }
+
+private:
+  void traverseLeafNode(std::shared_ptr<Node> node,
+                        std::function<bool (KeyT key, std::string &data)> cb) {
+    if (node->isLeafNode()) {
+      for (size_t i = 0; i < node->getKeyCount(); ++i) {
+        KeyT key = node->getKey(i);
+        Location loc = node->getDataLocation(i);
+        RecordManager::getInstance()->updateRecordNoResize(
+            this->sTableName, loc,
+            [&cb, key](std::string &record) -> bool { return cb(key, record); }
+        );
+      }
+    }
+    else {
+
+      for (size_t i = 0; i < node->getChildCount(); ++i) {
+        auto child = getChild(node, i);
+        traverseLeafNode(child, cb);
+      }
     }
   }
   /**
@@ -532,14 +652,12 @@ public:
                             ", targetNodeKey[0] = " << targetNode->getKey(0) <<
                             ", at = " << at <<
                             ", targetNodeKey[at] = " <<
-                                                     (at == targetNode->getKeyCount() ?
-                                                      0 :
-                                                      targetNode->getKey(at));
+                            (at == targetNode->getKeyCount() ?
+                             0 :
+                             targetNode->getKey(at));
     if (found) {
       throw KeyDuplicated(key, "");
     }
-    // Is a leaf node
-    BOOST_ASSERT(targetNode->getKey(0) <= key);
 
     Location loc = RecordManager::getInstance()->insert(
             sTableName, data, /* fixed-length */false);
@@ -555,46 +673,6 @@ public:
     }
     return true;
   }
-
-  std::string get(KeyT key) {
-    uint32_t at;
-    bool found;
-    auto targetNode = searchNode(getRoot(), key, at, found);
-    if (!found) {
-      throw KeyNotFound(key, "Key not found!");
-    }
-    else {
-      auto dataLoc = targetNode->getDataLocation(at);
-      auto record = RecordManager::getInstance()->getRecord(this->sTableName, dataLoc);
-      return record;
-    }
-  }
-  void remove(KeyT key);
-  void updateNoResize(KeyT key, std::function<bool (std::string &record)> callback) {
-    uint32_t at;
-    bool found;
-    auto targetNode = searchNode(getRoot(), key, at, found);
-    if (!found) {
-      throw KeyNotFound(key, "Key not found!");
-    }
-    else {
-      auto dataLoc = targetNode->getDataLocation(at);
-      RecordManager::getInstance()->updateRecordNoResize(this->sTableName, dataLoc, callback);
-    }
-  }
-
-  /**
-   * Traverse the btree. Read-only.
-   * @param callback
-   */
-  void traverse(std::function<void (KeyT key, const std::string &data)> callback) const;
-  /**
-   * Traverse the btree.
-   * @param callback: Returns true if this node is changed.
-   */
-  void traverse(std::function<bool (KeyT key, std::string &data)> callback);
-
-
   /**
    * Get child node i.
    * Might need 2 disk-ops
@@ -608,28 +686,6 @@ public:
     return parseNodeFromPage(parent, loc);
   }
 
-  static void setupBTree(const std::string &indexName) {
-    TableManager::getInstance()->buildTable(indexName, [](Pager *pPager) -> void {
-      auto page0 = pPager->getPage(0);
-      auto buf = page0->getBuf();
-
-      auto p0 = (_Page0*) buf;
-      p0->magic = BTREE_FILE_MAGIC_NUMBER;
-      p0->nodeSize = sizeof(typename Node::_NodeFormat);
-      /**
-       * As a correct root pager can never be in page zero,
-       *  we use 0 for representing there's no root page.
-       *  That is to say, this btree is totally empty.
-       */
-      p0->rootNodeOff = 0;
-      p0->rootNodePgNo = 0;
-
-      page0->markDirty();
-      page0->releaseBuf(buf);
-    });
-  }
-
-private:
   void splitLeafNode(std::shared_ptr<Node> node) {
     node->splitNode();
   }

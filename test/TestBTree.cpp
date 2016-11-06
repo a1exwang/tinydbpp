@@ -17,91 +17,65 @@ constexpr size_t MIN = 2;
 constexpr size_t MAX = 3;
 typedef BTree<uint32_t, MIN, MAX> TBTree;
 
-BOOST_AUTO_TEST_CASE(insertRoot) {
- TableManager::getInstance()->changeDB("Test");
- string indexName = "IndexRoot";
- boost::filesystem::remove("database/Test/" + indexName);
- BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
-
- BTree<uint32_t, MIN, MAX> btree(indexName);
- stringstream ss;
-
- string data;
- uint32_t key = 1;
-
- ss << key;
- ss >> data;
-
- btree.insert(key, data);
-
- auto newData = btree.get(key);
- BOOST_REQUIRE(newData == data);
-}
+//BOOST_AUTO_TEST_CASE(insertRoot) {
+//  TableManager::getInstance()->changeDB("Test");
+//  string indexName = "IndexRoot";
+//  boost::filesystem::remove("database/Test/" + indexName);
+//  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+//  BTree<uint32_t, MIN, MAX> btree(indexName);
+//  btree.insert(1, "1");
+//  BOOST_REQUIRE(btree.get(1)== "1");
+//}
 
 BOOST_AUTO_TEST_CASE(insertLeaf) {
- TableManager::getInstance()->changeDB("Test");
- string indexName = "IndexLeaf";
- boost::filesystem::remove("database/Test/" + indexName);
- BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexLeaf";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
 
- BTree<uint32_t, MIN, MAX> btree(indexName);
- stringstream ss;
+  BTree<uint32_t, MIN, MAX> btree(indexName);
 
- string data;
- uint32_t key = 1;
-
- ss << key;
- ss >> data;
-
- btree.insert(key, data);
-
- ss.clear();
- ss << 2;
- ss >> data;
- btree.insert(2, data);
-
- auto newData = btree.get(1);
- BOOST_REQUIRE(newData == "1");
+  btree.insert(2, "2");
+  btree.insert(1, "1");
+  BOOST_REQUIRE(btree.get(1)== "1");
 }
 
 BOOST_AUTO_TEST_CASE(insertGrow1) {
- TableManager::getInstance()->changeDB("Test");
- string indexName = "IndexGrow1";
- boost::filesystem::remove("database/Test/" + indexName);
- BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexGrow1";
+  boost::filesystem::remove("database/Test/" + indexName);
+  TBTree::setupBTree(indexName);
+  TBTree btree(indexName);
 
- BTree<uint32_t, MIN, MAX> btree(indexName);
+  btree.insert(3, "3");
+  btree.insert(1, "1");
+  btree.insert(2, "2");
 
- btree.insert(1, "1");
- btree.insert(2, "2");
- btree.insert(3, "3");
-
- BOOST_REQUIRE(btree.get(1) == "1");
+  BOOST_REQUIRE(btree.get(1) == "1");
 }
 BOOST_AUTO_TEST_CASE(insertSplitInner) {
- TableManager::getInstance()->changeDB("Test");
- string indexName = "IndexSplitInner";
- boost::filesystem::remove("database/Test/" + indexName);
- BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexSplitInner";
+  boost::filesystem::remove("database/Test/" + indexName);
+  TBTree::setupBTree(indexName);
+  TBTree btree(indexName);
 
- BTree<uint32_t, MIN, MAX> btree(indexName);
+  btree.insert(2, "2");
+  btree.insert(9, "9");
+  btree.insert(5, "5");
+  btree.insert(1, "1");
+  btree.insert(7, "7");
+  btree.insert(4, "4");
+  btree.insert(3, "3");
+  btree.insert(6, "6");
+  btree.insert(8, "8");
 
- btree.insert(1, "1");
- btree.insert(2, "2");
- btree.insert(3, "3");
- btree.insert(4, "4");
- btree.insert(5, "5");
- btree.insert(6, "6");
- btree.insert(7, "7");
- btree.insert(8, "8");
- btree.insert(9, "9");
-
- stringstream ss;
- btree.dump(ss);
- cout << ss.str();
- BOOST_REQUIRE(btree.get(1) == "1");
- BOOST_REQUIRE(btree.get(2) == "2");
- BOOST_REQUIRE(btree.get(7) == "7");
+//  stringstream ss;
+//  btree.dump(ss);
+//  cout << ss.str();
+  BOOST_REQUIRE(btree.get(1) == "1");
+  BOOST_REQUIRE(btree.get(2) == "2");
+  BOOST_REQUIRE(btree.get(7) == "7");
 }
 
 BOOST_AUTO_TEST_CASE(insertKeyDuplicated) {
@@ -170,4 +144,66 @@ BOOST_AUTO_TEST_CASE(updateData) {
   });
 
   BOOST_REQUIRE(btree.get(1) == "?");
+}
+
+BOOST_AUTO_TEST_CASE(traverseBTree) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexTraverseBTree";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(9, "9");
+  btree.insert(1, "1");
+  btree.insert(5, "5");
+  btree.insert(6, "6");
+  btree.insert(7, "7");
+  btree.insert(2, "2");
+  btree.insert(8, "8");
+  btree.insert(3, "3");
+  btree.insert(4, "4");
+
+  uint32_t i = 1;
+  btree.traverse([&i](uint32_t key, const std::string &data) -> void {
+    BOOST_ASSERT(i == key);
+    stringstream ss;
+    ss << i;
+    BOOST_ASSERT(ss.str() == data);
+    i++;
+  });
+}
+
+BOOST_AUTO_TEST_CASE(traverseBTreeUpdateNode) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexTraverseBTreeUpdateNode";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(6, "6");
+  btree.insert(8, "8");
+  btree.insert(3, "3");
+  btree.insert(4, "4");
+  btree.insert(2, "2");
+  btree.insert(7, "7");
+  btree.insert(5, "5");
+
+  uint32_t i = 1;
+  btree.traverse([&i](uint32_t key, std::string &data) -> bool {
+    BOOST_ASSERT(i == key);
+    stringstream ss;
+    ss << i + 1;
+    data = ss.str();
+    i++;
+    return true;
+  });
+
+  btree.traverse([&i](uint32_t key, const std::string &data) -> void {
+    stringstream ss;
+    ss << key + 1;
+    BOOST_ASSERT(data == ss.str());
+  });
 }
