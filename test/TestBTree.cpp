@@ -17,15 +17,15 @@ constexpr size_t MIN = 2;
 constexpr size_t MAX = 3;
 typedef BTree<uint32_t, MIN, MAX> TBTree;
 
-//BOOST_AUTO_TEST_CASE(insertRoot) {
-//  TableManager::getInstance()->changeDB("Test");
-//  string indexName = "IndexRoot";
-//  boost::filesystem::remove("database/Test/" + indexName);
-//  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
-//  BTree<uint32_t, MIN, MAX> btree(indexName);
-//  btree.insert(1, "1");
-//  BOOST_REQUIRE(btree.get(1)== "1");
-//}
+BOOST_AUTO_TEST_CASE(insertRoot) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "IndexRoot";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+  btree.insert(1, "1");
+  BOOST_REQUIRE(btree.get(1)== "1");
+}
 
 BOOST_AUTO_TEST_CASE(insertLeaf) {
   TableManager::getInstance()->changeDB("Test");
@@ -206,4 +206,105 @@ BOOST_AUTO_TEST_CASE(traverseBTreeUpdateNode) {
     ss << key + 1;
     BOOST_ASSERT(data == ss.str());
   });
+}
+
+
+BOOST_AUTO_TEST_CASE(deleteBTreeRoot) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeRoot";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+
+  btree.remove(1);
+  BOOST_REQUIRE_THROW(btree.get(1), TBTree::KeyNotFound);
+}
+
+BOOST_AUTO_TEST_CASE(deleteInBTreeRoot) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeRoot";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+
+  btree.remove(1);
+  BOOST_REQUIRE_THROW(btree.get(1), TBTree::KeyNotFound);
+}
+
+BOOST_AUTO_TEST_CASE(deleteBTreeDataShrintBelly) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeLeafOfARichParent";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+  btree.insert(3, "3");
+
+  btree.remove(2);
+  BOOST_REQUIRE_THROW(btree.get(2), TBTree::KeyNotFound);
+}
+
+BOOST_AUTO_TEST_CASE(deleteBTreeDataShrintBelly) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeLeafOfARichParent";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+  btree.insert(3, "3");
+
+  btree.remove(2);
+  BOOST_REQUIRE_THROW(btree.get(2), TBTree::KeyNotFound);
+}
+
+
+BOOST_AUTO_TEST_CASE(deleteBTreeDataDeleteOneChild) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeDataDeleteOneChild";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+  btree.insert(3, "3");
+  btree.insert(4, "4");
+  btree.insert(5, "5");
+  btree.insert(6, "6");
+
+  btree.remove(3);
+  BOOST_REQUIRE_THROW(btree.get(3), TBTree::KeyNotFound);
+}
+
+BOOST_AUTO_TEST_CASE(deleteBTreeNodeDecreaseHeight) {
+  TableManager::getInstance()->changeDB("Test");
+  string indexName = "deleteBTreeNodeDecreaseHeight";
+  boost::filesystem::remove("database/Test/" + indexName);
+  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+
+  BTree<uint32_t, MIN, MAX> btree(indexName);
+
+  btree.insert(1, "1");
+  btree.insert(2, "2");
+  btree.insert(3, "3");
+  btree.insert(4, "4");
+  btree.insert(5, "5");
+  btree.insert(6, "6");
+
+  btree.remove(1);
+  BOOST_REQUIRE_THROW(btree.get(1), TBTree::KeyNotFound);
 }

@@ -296,6 +296,17 @@ namespace tinydbpp {
         p->releaseBuf(data);
         return ret;
     }
+    void RecordManager::deleteRecord(const std::string &table_name, Location loc) {
+        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::select(), maybe you type the wrong db name.");
+        shared_ptr<Pager> ptr = td->getPager();
+        shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
+        char * dic = dic_page->getBuf();
+        shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
+        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
+        dic_page->releaseBuf(dic);
+        this->delOneRecord(table_name, loc.pageNumber, loc.loc, fixed);
+    }
 
     void RecordManager::updateRecordNoResize(const std::string &table_name, Location loc,
                                              std::function<bool(std::string &record)> callback) const {

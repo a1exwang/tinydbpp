@@ -194,6 +194,49 @@ public:
       children.insert(children.begin() + keyAt + 1, node->getLocation());
     }
 
+    void deleteData(KeyT key) {
+      BOOST_ASSERT(this->isLeafNode());
+      int index = -1;
+      for (size_t i = 0; i < keys.size(); ++i) {
+        if (keys[i] == key) {
+          index = i;
+          break;
+        }
+      }
+      BOOST_ASSERT(index >= 0);
+      Location locToFree = children[index];
+      RecordManager::getInstance()->deleteRecord(btree.sTableName, locToFree);
+
+      keys.erase(keys.begin() + index);
+      children.erase(children.begin() + index);
+      this->writeBack();
+    }
+
+    void deleteSelfOnFile() {
+      BOOST_ASSERT(this->keys.size() == 0);
+      RecordManager::getInstance()->deleteRecord(btree.sTableName, this->getLocation());
+    }
+
+    void deleteChild(std::shared_ptr<Node> child) {
+      int index = -1;
+      for (size_t i = 0; i < this->children.size(); ++i) {
+        if (this->children[i] == child->getLocation()) {
+          index = i;
+          break;
+        }
+      }
+      BOOST_ASSERT(index >= 0);
+      if (index == 0) {
+        keys.erase(keys.begin());
+        children.erase(children.begin());
+      }
+      else {
+        keys.erase(keys.begin() + index - 1);
+        children.erase(children.begin() + index);
+      }
+      this->writeBack();
+    }
+
     /**
      * Node format
      * +00  u8    nKeyCount
@@ -527,6 +570,10 @@ public:
   std::string get(KeyT key) {
     uint32_t at;
     bool found;
+    auto root = getRoot();
+    if (root == nullptr) {
+      throw KeyNotFound(key, "Key not found!");
+    }
     auto targetNode = searchNode(getRoot(), key, at, found);
     if (!found) {
       throw KeyNotFound(key, "Key not found!");
@@ -561,7 +608,40 @@ public:
    * @throws KeyNotFound
    */
   void remove(KeyT key) {
-    BOOST_ASSERT(false);
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Trying to delete a non-existing node");
+    }
+    else {
+      deleteNode(targetNode, key);
+    }
+  }
+  void deleteNode(std::shared_ptr<Node> targetNode, KeyT key) {
+    auto parent = targetNode->getParent();
+    // targetNode is root node
+    if (parent == nullptr) {
+      targetNode->deleteData(key);
+      if (targetNode->getKeyCount() == 0) {
+        clearRootLocation();
+        targetNode->deleteSelfOnFile();
+      }
+    }
+    else {
+      targetNode->deleteData(key);
+      if (targetNode->getKeyCount() == 0) {
+        if (parent->getChildCount() - 1 >= BRankMin) {
+          parent->deleteChild(targetNode);
+        }
+        else {
+          // if can borrow from cousins, do it,
+          // else borrow from parent's cousins
+          BOOST_ASSERT(false);
+        }
+        targetNode->deleteSelfOnFile();
+      }
+    }
   }
 
   /**
@@ -716,6 +796,16 @@ private:
     BOOST_ASSERT(loc.loc < (int)PAGER_PAGE_SIZE);
     p0->rootNodePgNo = static_cast<uint32_t>(loc.pageNumber);
     p0->rootNodeOff = static_cast<uint16_t>(loc.loc);
+    page0->markDirty();
+    page0->releaseBuf(buf);
+  }
+  void clearRootLocation() {
+    auto page0 = pPager->getPage(0);
+    auto buf = page0->getBuf();
+    _Page0 *p0 = (_Page0*) buf;
+
+    p0->rootNodePgNo = 0;
+    p0->rootNodeOff = 0;
     page0->markDirty();
     page0->releaseBuf(buf);
   }
