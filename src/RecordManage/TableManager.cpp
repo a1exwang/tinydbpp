@@ -8,7 +8,7 @@ using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
 TableManager::Garbo TableManager::garbo;
-std::string TableManager::dir;
+std::string TableManager::base_dir;
 shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     if(my_pager == nullptr)
         return my_pager = shared_ptr<Pager>(new Pager(path, flag));
@@ -36,6 +36,12 @@ std::vector<std::string> TableDescription::read(char* buf, int len, int& now, bo
         now = minimum;
     return ret;
 }
+
+void TableDescription::addPattern(int x){
+    pattern.push_back(x);
+    if(x == -1) len += 4 + DEFAULT_VARCHAR_LEN;
+    else len += x;
+}
 std::string TableDescription::embed(const std::vector<std::string> list, bool & fixed_res){
     std::string ret;
     fixed_res = true;
@@ -59,46 +65,55 @@ std::string TableDescription::embed(const std::vector<std::string> list, bool & 
 
 std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string name) {
     for(auto ptr : table_map)
-    if(ptr->name == name)
-        return ptr;
-    if(!isExist(name))
+        if(ptr->name == name)
+            return ptr;
+    if(!FileUtils::isExist((dir + "/" + name).c_str()))
         return nullptr;
     shared_ptr<TableDescription> ret(new TableDescription());
     ret->name = name;
-    ret->path = dir + "/" + dbname + "/" + name;
-    auto p = ret->getPager()->getPage(0);
+    ret->path = dir + "/" + name;
     //TODO parse schema
-    ret->addPattern(4);
+    auto parse_func = [](shared_ptr<TableDescription> new_td){
+        //0.this function should be implemented in parser module, this is a test func
+        //1.read from page(0) in new_td->getPager()->getPage(0) and parse
+        //2.add bytes pattern of new_td;
+        //3.if necessary add other properties in TableDescription class(whether there is a index)
+        new_td->addPattern(4);
+    };
+    parse_func(ret);
     table_map.push_back(ret);
     return ret;
 }
 
-void TableManager::changeDB(std::string db) {
-    if(db == dbname)return ;
+bool TableManager::changeDB(std::string db, bool auto_create) {
+    if(db == dbname)
+        return true;
+    string dbtable_name = this->base_dir + "/" + db + "/" + SYS_TABLE_NAME;
+    if(!FileUtils::isExist(dbtable_name.c_str()))
+        if(!auto_create)
+            return false;
+        else
+            FileUtils::createFile(dbtable_name.c_str());
     this->dbname = db;
-    if(ins){
-        table_map.clear();
-    }
+    this->dir = this->base_dir + "/" + db;
+    table_map.clear();
 }
 
-bool TableManager::isExist(std::string name) {
-    //TODO check info in DBTable
-    string whole_name = TableManager::getInstance()->dir + "/" +TableManager::getInstance()->dbname + "/" + name;
-    FILE* testFile = fopen(whole_name.c_str(), "r");
-    if(testFile == NULL) return false;
-    fclose(testFile);
-    return true;
-}
 
-bool TableManager::buildTable(std::string name) {
-    if(isExist(name)) return false;
+bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
+    string whole_name = dir + "/" + name;
+    if(FileUtils::isExist(whole_name.c_str()))
+        return false;
     else{
-        string whole_name = dir + "/" + dbname + "/" + name;
         shared_ptr<Pager> ptr( new Pager(whole_name, Pager::ReadWrite) );
         shared_ptr<Page> p = ptr->getPage(0);
         shared_ptr<Page> dic_p = ptr->getPage(1);
+        if (callback) {
+            callback(ptr.get());
+        }
         ptr->writeBackAll();
         //TODO write scheme
         return true;
     }
 }
+

@@ -14,7 +14,7 @@ class Lexer :public SQLFlexLexer {
 public:
   typedef tinydbpp::Parser::token::yytokentype Token;
 public:
-  Lexer(std::istream &in, std::ostream &out) :SQLFlexLexer(in, out) {
+  Lexer(std::istream *in, std::ostream *out) :SQLFlexLexer(in, out) {
   }
   int yylex();
   int lex(ParserVal *v) {

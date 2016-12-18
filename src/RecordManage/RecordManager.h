@@ -16,7 +16,10 @@ namespace tinydbpp {
     struct Location {
         int pageNumber;
         int loc;
-        Location(int _a, int _b) : pageNumber(_a), loc(_b) {}
+        Location(int pageNumber, int loc) : pageNumber(pageNumber), loc(loc) {}
+        std::string toString() const;
+        bool operator==(const Location &rhs) const;
+        bool operator!=(const Location &rhs) const;
     };
 
     class RecordManager {
@@ -40,6 +43,9 @@ namespace tinydbpp {
 
         void select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
                     std::function<void(std::vector<std::string>&, int, int)>&);
+        std::string getRecord(const std::string &table_name, Location loc) const;
+        void deleteRecord(const std::string &table_name, Location loc);
+        void updateRecordNoResize(const std::string &table_name, Location loc, std::function<bool (std::string &record)> callback) const;
     };
 
 }

@@ -10,12 +10,15 @@ SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 include_directories(src ${CMAKE_CURRENT_BINARY_DIR}/src)
 
+
+include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/third_party/json/src)
 # Link libraries
 if(UNIX)
   if(APPLE)
-    link_libraries(boost_system boost_log-mt boost_thread-mt boost_unit_test_framework-mt pthread)
+    link_libraries(boost_system boost_log-mt boost_thread-mt boost_unit_test_framework-mt boost_filesystem-mt pthread)
   else() # Linux
-    link_libraries(boost_system boost_log boost_thread boost_unit_test_framework pthread)
+    link_libraries(boost_system boost_log boost_thread boost_unit_test_framework boost_filesystem pthread)
   endif()
 else()
   message(FATAL_ERROR, "Does not support non-unix platform")

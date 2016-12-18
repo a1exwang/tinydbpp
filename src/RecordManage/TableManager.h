@@ -11,6 +11,7 @@
 #include <boost/assert.hpp>
 #include <boost/lexical_cast.hpp>
 #include <iostream>
+#include <FileUtils.h>
 
 namespace tinydbpp {
 
@@ -24,15 +25,8 @@ namespace tinydbpp {
             std::string name, path;
             std::shared_ptr<Pager> my_pager;
             TableDescription(): len(0), my_pager(nullptr){}
-            //path after DEFAULT_DATABASE_DIR
-            std::string getPath(){
-                return path;
-            }
-            void addPattern(int x){
-                pattern.push_back(x);
-                if(x == -1) len += 4 + DEFAULT_VARCHAR_LEN;
-                else len += x;
-            }
+            std::string getPath(){return path;}
+            void addPattern(int x);
             std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite);
             std::vector<std::string> read(char* buf, int len, int& now, bool fixed);
             std::string embed(const std::vector<std::string> list, bool & fixed_res);
@@ -40,43 +34,39 @@ namespace tinydbpp {
 
     class TableManager {
         static TableManager *ins;
-        TableManager():dbtable(nullptr) {
-        }
+        TableManager(){}
         struct Garbo{
-            Garbo(){
-                std::cout <<"garbo 1"<<std::endl;
-            }
+            Garbo(){}
             ~Garbo(){
                 delete TableManager::getInstance();
-                std::cout <<"garbo"<<std::endl;
             }
         };
         static Garbo garbo;
     public:
         std::vector<std::shared_ptr<TableDescription>> table_map;
-        static std::string dir;
+        static std::string base_dir;
         std::string dbname;
-        std::shared_ptr<Pager> dbtable;
+        std::string dir;
         static TableManager *getInstance() {
             if (!ins) {
                 ins = new TableManager();
-                if(dir == "") {
-                    //TODO create directory
-                    dir = DEFAULT_DATABASE_DIR;
+                if(base_dir == "") {
+                    base_dir = DEFAULT_DATABASE_DIR;
                 }
-                ins->dbtable = std::shared_ptr<Pager>(new Pager(dir + "/" + SYS_TABLE_NAME, Pager::ReadWrite));
+                FileUtils::createDir(base_dir.c_str());
+                ins->dbname = "";
+                ins->changeDB(TEST_DATABASE_NAME, true);//TODO delete it, this is just for compatibility of previous unit tests
                 return ins;
             } else return ins;
         }
-        static bool setDir(std::string _dir){
+        static bool setBaseDir(std::string _dir){
             if(ins) return false;
-            dir = _dir;
+            base_dir = _dir;
             return true;
         }
-        void changeDB(std::string db);
+        bool changeDB(std::string db, bool auto_create = true);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
-        bool buildTable(std::string);
-        bool isExist(std::string);
+        bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
     };
 
 

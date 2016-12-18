@@ -33,6 +33,7 @@ using namespace std;
 %token IDENTIFIER STRING INT FLOAT
 %token SEMICOLON
 %token UNKNOWN
+//%token '(' ')'
 
 %parse-param { class Lexer &lexer } { std::shared_ptr<tinydbpp::ast::Node> &rootNode }
 
@@ -50,6 +51,7 @@ stmts: %empty { $$ = ParserVal(std::make_shared<ast::Statements>()); }
 ;
 stmt: sys_stmt SEMICOLON   { $$ = $1; }
     | table_stmt SEMICOLON { $$ = $1; }
+    | idx_stmt SEMICOLON { $$ = $1;}
 ;
 
 sys_stmt: KW_SHOW KW_DATABASES {
@@ -69,10 +71,52 @@ sys_stmt: KW_SHOW KW_DATABASES {
     }
 
 
-table_stmt: id_list;
+table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldLists ')'{
+                $$.makecreateTbNode($5);
+            }
+           | KW_DROP KW_TABLE IDENTIFIER{
+                $$.makeDropTbNode($3);
+           }
+           //| KW_DESC IDENTIFIER
+           | KW_INSERT KW_INTO IDENTIFIER KW_VALUES valueLists{
+                $$.makeInsertTbNode($3, $5);
+           }
+           | KW_DELETE KW_FROM IDENTIFIER KW_WHERE whereClause{
+                $$.makeDeleteTbNode($3, $5);
+           }
+           | KW_UPDATE IDENTIFIER KW_SET setClause KW_WHERE whereClause{
+                $$.makeUpdateTbNode($3, $5);
+           }
+           | KW_SELECT selector FROM tableList KW_WHERE whereClause{
+                $$.makeSelectTbNode($2, $4, $6);
+           }
 
-id_list: IDENTIFIER
-    | id_list IDENTIFIER;
+idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
+                $$.makeCreateIdxNode($5);
+            }
+            | KW_DROP KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
+                $$.makeDropIdxNode($5);
+            }
+
+fieldList:  field {
+                $$ = ParserVal(new FieldList());
+            }
+            | fieldList ',' field {
+                auto fields = std::dynamic_pointer_cast<ast::FieldList>($1.getNode());
+                fields->vec.push_back(*($3.getNode()));
+            }
+
+field: IDENTIFIER type
+         | IDENTIFIER type NOT NULL
+         | PRIMARY KEY '(' IDENTIFIER ')'
+
+type: 
+    KW_INT '(' INT ')'{
+        $$.iVal = 
+    }
+    | KW_VARCHAR '(' INT ')'
+// id_list: IDENTIFIER
+//     | id_list IDENTIFIER;
 %%
 
 void tinydbpp::Parser::error(const std::string& msg) {

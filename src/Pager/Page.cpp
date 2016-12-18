@@ -3,6 +3,8 @@
 //
 
 #include "Page.h"
+#include <Pager/PagerPerfMon.h>
+#include "../test/TestUtils.h"
 #include <FileUtils.h>
 #include <boost/assert.hpp>
 #include <boost/log/trivial.hpp>
@@ -11,7 +13,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <iostream>
+#include <iostream>
 
+using namespace std;
 using namespace tinydbpp;
 
 Page::Page(Pager *pPager, Pager::PageID id, bool lazyMode)
@@ -25,9 +29,9 @@ Page::~Page() {
     BOOST_ASSERT_MSG(pPager != nullptr, "Pager destruction before Page destroyed.");
     writeBack();
   }
+//  cout << "Page::~Page(). Page ID = " << this->id << endl;
   BOOST_ASSERT_MSG(this->iBufRefCount == 0, "Maybe you forget to call Page::releaseBuf().");
 
-//  BOOST_LOG_TRIVIAL(info) << "Page::~Page(). Page ID = " << this->id;
   // If pBuf != nullptr, it means this page is still a weak page.
   if (pBuf != nullptr) {
     if (bLazyMode && pPager != nullptr)
@@ -47,6 +51,7 @@ void Page::writeBack() {
   BOOST_ASSERT(this->pBuf != nullptr);
 
   auto byteWritten = write(fd, this->pBuf, PAGER_PAGE_SIZE);
+  pPager->getPerfMon()->incWriteFile(this->id);
   BOOST_ASSERT(byteWritten == PAGER_PAGE_SIZE);
   this->bDirty = false;
 
@@ -75,14 +80,13 @@ int Page::decRef() {
 
 char *Page::getBuf() {
   BOOST_ASSERT_MSG(pPager != nullptr, "Maybe you use the pager after deleting the pager.");
-  BOOST_LOG_TRIVIAL(info) << "Page::getBuf() called. Page ID " << id << ". RefCount before inc " << this->iBufRefCount;
   if (pBuf != nullptr) {
     // if iBufRefCount == 0, the buf is in hanging status,
     //  it could become a victim at any time.
     // if iBufRefCount > 0, the buf is actually used somewhere.
     BOOST_ASSERT(this->iBufRefCount >= 0);
+    this->pPager->getPerfMon()->incCacheHit(this->id);
     this->incRef();
-    BOOST_LOG_TRIVIAL(info) << "Page::getBuf() cache hit. Page::pBuf = " << (void*)this->pBuf;
     return pBuf;
   }
 
@@ -104,19 +108,17 @@ char *Page::getBuf() {
   auto readSize = read(fd, this->pBuf, PAGER_PAGE_SIZE);
   BOOST_LOG_TRIVIAL(info) << "Page::getBuf(). Read from file<" << pPager->getFilePath() <<
             "> Page<" << this->id << "> first byte: " << (int)this->pBuf[0];
+  pPager->getPerfMon()->incReadFile(this->id);
   BOOST_ASSERT(readSize == PAGER_PAGE_SIZE);
 
   // restore previous position
   lseek(fd, prevPos, SEEK_SET);
 
-  BOOST_LOG_TRIVIAL(info) << "Page::getBuf() cache miss. Read from file. Page::pBuf = " <<
-            (void*)this->pBuf;
   return this->pBuf;
 }
 
 void Page::releaseBuf(char *pBuf) {
   BOOST_ASSERT(pBuf == this->pBuf);
-  BOOST_LOG_TRIVIAL(info) << "Page::releaseBuf(). Page ID " << id << " RefCount before release = " << this->iBufRefCount;
   decRef();
 }
 

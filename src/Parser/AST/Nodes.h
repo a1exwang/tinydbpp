@@ -57,5 +57,41 @@ private:
   std::vector<std::shared_ptr<Statement>> statements;
 };
 
+
+class Field : public Node{
+public:
+    virtual ~Field(){}
+    Field(){
+        can_null = true;
+        is_key = false;
+        is_primary_key_stmt = false;
+        size = 0;
+    }
+    Field(std::string _n, std::string _t, int s, bool _null, bool _key, bool _is_p_stmt = false):name(_n),type(_t), can_null(_null), is_key(_key)
+            ,is_primary_key_stmt(_is_p_stmt){
+    }
+    std::string name;
+    std::string type;
+    int size;
+    bool can_null;
+    bool is_key;
+    bool is_primary_key_stmt;
+};
+
+class FieldList : public Node{
+public:
+    std::vector<Field> vec;
+    void checkPrimaryKey(){
+        for(auto &f : vec)
+            if(f.is_primary_key_stmt)
+                for(auto &t : vec)
+                    if(t.name == f.name && !t.is_primary_key_stmt)
+                        t.is_key = true;
+    }
+};
+
+
+
+
 }
 }

@@ -18,7 +18,7 @@ using namespace tinydbpp;
 
 BOOST_AUTO_TEST_CASE(integer) {
   stringstream ssin;
-  Lexer lexer(ssin, cout);
+  Lexer lexer(&ssin, &cout);
   ssin << "1234";
   ParserVal iVal;
   BOOST_REQUIRE(lexer.lex(&iVal) != 0);
@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(integer) {
 }
 BOOST_AUTO_TEST_CASE(integerHex) {
   stringstream ssin;
-  Lexer lexer(ssin, cout);
+  Lexer lexer(&ssin, &cout);
   ssin << "0x1234";
   ParserVal iVal;
   BOOST_REQUIRE(lexer.lex(&iVal) != 0);
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(integerHex) {
 
 BOOST_AUTO_TEST_CASE(integerOverflow) {
   stringstream ssin;
-  Lexer lexer(ssin, cout);
+  Lexer lexer(&ssin, &cout);
   ssin << "1234567890123";
   ParserVal iVal;
 
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(integerOverflow) {
  */
 BOOST_AUTO_TEST_CASE(keyword) {
   stringstream ssin;
-  Lexer lexer(ssin, cout);
+  Lexer lexer(&ssin, &cout);
   ssin << "create TABLE";
   ParserVal token;
 
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(keyword) {
  */
 BOOST_AUTO_TEST_CASE(stringLiteral) {
   stringstream ssin;
-  Lexer lexer(ssin, cout);
+  Lexer lexer(&ssin, &cout);
   ssin << "'string literal'";
   ParserVal token;
 

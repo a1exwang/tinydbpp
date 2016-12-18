@@ -2,8 +2,10 @@
 // Created by alexwang on 10/13/16.
 //
 
-#include <Pager/Pager.h>
-#include <Pager/Page.h>
+
+#include <Pager/PagerPerfMon.h>
+#include <Pager.h>
+#include <Page.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <boost/log/trivial.hpp>
@@ -16,6 +18,7 @@ using namespace std;
 Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool lazyMode)
   :sFilePath(sPath), eOpenFlags(flags), iFd(-1), maxPages(maxPages), pagesCached(0), bLazyMode(lazyMode) {
 
+  pPerfMon = new PagerPerfMon(this);
   int oFlags = O_CREAT;
   switch(flags) {
   case ReadOnly:
@@ -43,6 +46,8 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
 
 Pager::~Pager() {
   __isDestructing = true;
+  if (pPerfMon)
+    delete pPerfMon;
   writeBackAll();
   close(this->iFd);
 
@@ -56,17 +61,18 @@ Pager::~Pager() {
   }
 }
 
-std::shared_ptr<Page> Pager::getPage(tinydbpp::Pager::PageID id) {
+std::shared_ptr<Page> Pager::getPage(Pager::PageID id) {
   if (this->mapPages.find(id) != this->mapPages.end()) {
-    BOOST_LOG_TRIVIAL(info) << "Pager::getPage(" << id << ") cache hit";
     auto ret = this->mapPages[id];
     return ret;
   }
-  FileUtils::makeSureAtLeastFileSize(this->iFd, (id + 1) * PAGER_PAGE_SIZE );
-  this->maxValidPages = FileUtils::filePages(this->iFd);
-  auto pPage = shared_ptr<Page>(new Page(this, id, this->bLazyMode));
-  this->mapPages[id] = pPage;
-  return pPage;
+  else {
+    FileUtils::makeSureAtLeastFileSize(this->iFd, (id + 1) * PAGER_PAGE_SIZE );
+    this->maxValidPages = FileUtils::filePages(this->iFd);
+    auto pPage = shared_ptr<Page>(new Page(this, id, this->bLazyMode));
+    this->mapPages[id] = pPage;
+    return pPage;
+  }
 }
 
 void Pager::needOnePageQuota() {

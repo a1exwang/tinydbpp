@@ -21,7 +21,7 @@ using namespace std;
 
 BOOST_AUTO_TEST_CASE(emptyStatement) {
   stringstream ssin, ssout;
-  Lexer lexer(ssin, ssout);
+  Lexer lexer(&ssin, &ssout);
   shared_ptr<ast::Node> node;
   Parser parser(lexer, node);
 
@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(emptyStatement) {
 
 BOOST_AUTO_TEST_CASE(showDatabases) {
   stringstream ssin, ssout;
-  Lexer lexer(ssin, ssout);
+  Lexer lexer(&ssin, &ssout);
   shared_ptr<ast::Node> node;
   Parser parser(lexer, node);
 
