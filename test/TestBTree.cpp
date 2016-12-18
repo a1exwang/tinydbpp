@@ -254,23 +254,6 @@ BOOST_AUTO_TEST_CASE(deleteBTreeDataShrintBelly) {
   BOOST_REQUIRE_THROW(btree.get(2), TBTree::KeyNotFound);
 }
 
-BOOST_AUTO_TEST_CASE(deleteBTreeDataShrintBelly) {
-  TableManager::getInstance()->changeDB("Test");
-  string indexName = "deleteBTreeLeafOfARichParent";
-  boost::filesystem::remove("database/Test/" + indexName);
-  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
-
-  BTree<uint32_t, MIN, MAX> btree(indexName);
-
-  btree.insert(1, "1");
-  btree.insert(2, "2");
-  btree.insert(3, "3");
-
-  btree.remove(2);
-  BOOST_REQUIRE_THROW(btree.get(2), TBTree::KeyNotFound);
-}
-
-
 BOOST_AUTO_TEST_CASE(deleteBTreeDataDeleteOneChild) {
   TableManager::getInstance()->changeDB("Test");
   string indexName = "deleteBTreeDataDeleteOneChild";
