@@ -9,7 +9,7 @@ namespace ast {
 
 class Node {
 public:
-  std::shared_ptr<Node> ch[3];
+  std::shared_ptr<ParserVal> ch[3];
   Node():ch{nullptr}{}
   virtual ~Node() {}
     virtual void exec(){};

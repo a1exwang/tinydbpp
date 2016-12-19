@@ -51,6 +51,9 @@ BOOST_AUTO_TEST_CASE(showDatabases) {
   BOOST_REQUIRE(dynamic_cast<ast::Statements*>(node.get()));
   auto stmts = dynamic_pointer_cast<ast::Statements>(node);
   auto ss = stmts->get();
+    for(auto & s: ss){
+        s->exec();
+    }
   BOOST_REQUIRE(ss[0]->getType() == ast::Statement::Type::ShowDbs);
   BOOST_REQUIRE(ss[1]->getType() == ast::Statement::Type::CreateDb);
   BOOST_REQUIRE(dynamic_pointer_cast<ast::SysManagement>(ss[1])->getTarget()->getStrVal() == "test_database");

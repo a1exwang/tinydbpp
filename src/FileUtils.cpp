@@ -12,6 +12,8 @@
 #include <boost/filesystem.hpp>
 #include <iostream>
 #include <string>
+#include <boost/range/iterator_range_core.hpp>
+
 using namespace tinydbpp;
 using namespace boost::filesystem;
 using namespace std;
@@ -79,7 +81,7 @@ int FileUtils::createFile(const char *str) {
     {
         char DirName[256];
         memcpy(DirName, str, (size_t)pos_of_dir);
-        DirName[pos_of_dir + 1] = 0;
+        DirName[pos_of_dir] = '\0';
         createDir(DirName);
     }
     FILE* res = fopen(str, "w");
@@ -90,8 +92,10 @@ int FileUtils::createFile(const char *str) {
 
 std::vector<std::string> FileUtils::listFiles(const char *dir) {
     std::vector<std::string> ret;
-    for (directory_iterator itr(dir); itr!=directory_iterator(); ++itr)
-    {
-        ret.push_back(itr->path().filename().string()); // display filename only
+    for(auto& entry : boost::make_iterator_range(directory_iterator(path(dir)), {})) {
+        string tmp = entry.path().filename().string();
+        if (tmp[0] != '.')
+            ret.push_back(tmp);
     }
+    return ret;
 }
