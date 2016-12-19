@@ -97,6 +97,7 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
     this->dbname = db;
     this->dir = this->base_dir + "/" + db;
     table_map.clear();
+    return true;
 }
 
 

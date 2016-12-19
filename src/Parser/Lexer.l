@@ -16,6 +16,7 @@
 %option prefix="SQL"
 %option stack
 
+SIMPLE_OPERATOR = ("="|"<"|">"|"("|")"|".")
 %%
 [ \t\r\n\v]+ {
     // Ignore all spaces
@@ -74,6 +75,13 @@
 ; {
     return Token::SEMICOLON;
 }
+SIMPLE_OPERATOR {
+    yylval.becomeBasicSymbol(yytext, yyleng);
+    return yytext[0];
+}
 
+"<>" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_NEQ; }
+"<=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_LEQ; }
+">=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_GEQ; }
 
 %%

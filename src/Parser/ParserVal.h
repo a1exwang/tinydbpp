@@ -13,7 +13,7 @@ class ParserVal {
 public:
   enum Type {
     Unknown = -1,
-    Int, String, Double, Keyword, Identifier
+    Int, String, Double, Keyword, Identifier, BasicSymbol
   };
 public:
   typedef std::shared_ptr<ast::Node> SPNode;
@@ -39,6 +39,7 @@ public:
   void becomeIdentifier(const char *str, size_t len);
   void becomeInt(const char *str, size_t len);
   void becomeHexInt(const char *str, size_t len);
+  void becomeBasicSymbol(const char *str, size_t len);
 
   SPNode getNode() { return node; }
   void makeShowDbsNode();

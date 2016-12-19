@@ -168,6 +168,7 @@ namespace tinydbpp {
         select(table_name, checker, update_func);
         return;
     }
+
     void RecordManager::updateOneRecord(const std::string &table_name, std::vector<std::string> &vec,
                                         int pageID, int now) {
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
@@ -195,27 +196,6 @@ namespace tinydbpp {
         update_func(vec, pageID, now);
         return ;
     }
-    Location RecordManager::updateOneRecord(const std::string &table_name, Location loc, const string &res, bool fixed_res) {
-        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
-        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");
-        shared_ptr<Pager> ptr = td->getPager();
-        shared_ptr<Page> dic_page = ptr->getPage(
-                ((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
-        char *dic = dic_page->getBuf();
-        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
-        dic_page->releaseBuf(dic);
-        if (fixed && fixed_res) {
-            shared_ptr<Page> p = ptr->getPage((uint32_t) loc.pageNumber);
-            char *data = p->getBuf();
-            memcpy(data + loc.loc + 1, res.c_str(), res.length());
-            p->markDirty();
-            p->releaseBuf(data);
-        } else {
-            RecordManager::getInstance()->delOneRecord(table_name, loc.pageNumber, loc.loc, fixed);
-            return RecordManager::getInstance()->insert(table_name, res, fixed_res);
-        }
-    }
-
     void RecordManager::delOneRecord(const std::string &table_name, int pageID, int now, bool fixed){
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         BOOST_ASSERT_MSG(td != nullptr, "RecordManager::delOneRecord(), maybe you type the wrong db name.");
@@ -367,7 +347,6 @@ namespace tinydbpp {
         shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
         char * dic = dic_page->getBuf();
         shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
-        // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
         //BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
         bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
         dic_page->releaseBuf(dic);
