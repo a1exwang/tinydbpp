@@ -6,6 +6,7 @@
 #define TINYDBPP_FILEUTILS_H
 
 #include <cstdint>
+#include <vector>
 #include "Pager/Pager.h"
 
 namespace tinydbpp {
@@ -18,6 +19,7 @@ public:
     static bool isExist(const char* whole_name);
     static int createDir(const char *sPathName);
     static int createFile(const char *str);
+    static std::vector<std::string> listFiles(const char* dir);
 };
 }
 

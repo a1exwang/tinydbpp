@@ -41,7 +41,7 @@ public:
   void becomeHexInt(const char *str, size_t len);
   void becomeBasicSymbol(const char *str, size_t len);
 
-  SPNode getNode() { return node; }
+  SPNode getNode()const { return node; }
   void makeShowDbsNode();
   void makeCreateDbNode(const ParserVal &target);
   void makeDropDbNode(const ParserVal &target);

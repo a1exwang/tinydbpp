@@ -3,6 +3,9 @@
 #include <Parser/ParserVal.h>
 #include <cassert>
 #include <iostream>
+#include <FileUtils.h>
+#include <RecordManage/TableManager.h>
+using namespace std;
 using namespace tinydbpp::ast;
 
 std::shared_ptr<const tinydbpp::ParserVal> SysManagement::getTarget() const {
@@ -106,3 +109,21 @@ void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<Whe
     };
 
  */
+void Statement::exec() {
+    if(type == ShowDbs){
+        auto file_name_list = FileUtils::listFiles(TableManager::base_dir.c_str());
+        for(auto & str : file_name_list)
+            cout << str<< " ";
+        cout <<endl;
+    }else if(type == CreateDb){
+
+    }else if(type == DropDb){
+
+    }else if(type == UseDb){
+
+    }else if(type == ShowTables){
+
+    }else{
+
+    }
+}
