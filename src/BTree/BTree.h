@@ -18,6 +18,7 @@
 
 namespace tinydbpp {
 constexpr uint32_t BTREE_FILE_MAGIC_NUMBER = 0xdb0b42ee;
+constexpr unsigned int LocLength = sizeof(uint32_t) + sizeof(uint16_t);
 
 /**
  * BTree class.
@@ -548,6 +549,7 @@ public:
   /**
    * Insert into btree.
    * NOTE: data could be variable length string
+   * If the key exists, throw an exception.
    * @param key
    * @param data
    */
@@ -558,6 +560,32 @@ public:
     }
     else {
       insertDataFrom(root, key, data);
+    }
+  }
+
+  /**
+   * Insert into btree.
+   * NOTE: data could be variable length string
+   * @param key
+   * @param data
+   */
+  void insertNonUnique(KeyT key, const std::string &data, bool fixed) {
+    Location dataLoc = RecordManager::getInstance()->insert(this->sTableName, data, fixed);
+    std::string strDataLoc = locationToString(dataLoc);
+
+    try {
+      update(key, [this, key, &strDataLoc](std::string &record) -> bool {
+        std::string locs = this->get(key);
+        locs += strDataLoc;
+        record += strDataLoc;
+        return true;
+      });
+    }
+    catch (KeyNotFound e) {
+      Location ptrLoc = RecordManager::getInstance()->insert(this->sTableName, strDataLoc, false);
+      std::string strPtrLoc = locationToString(ptrLoc);
+
+      insert(key, strPtrLoc);
     }
   }
 
@@ -584,6 +612,22 @@ public:
       return record;
     }
   }
+
+  /**
+   * Get multiple data
+   */
+  std::vector<std::string> getMultipleData(KeyT key) {
+    std::string ptrs = this->get(key);
+    BOOST_ASSERT(ptrs.size() % LocLength == 0);
+    int count = ptrs.size() / LocLength;
+    std::vector<std::string> result;
+    for (int i = 0; i < count; ++i) {
+      Location loc = stringToLocation(ptrs.substr(i * LocLength, LocLength));
+      result.push_back(RecordManager::getInstance()->getRecord(this->sTableName, loc));
+    }
+    return result;
+  }
+
   /**
    * Update without resizing data.
    * @param key
@@ -603,6 +647,44 @@ public:
     }
   }
   /**
+   * Update without resizing data.
+   * @param key
+   * @param callback: returns true if record is actually changed.
+   * @throws KeyNotFound
+   */
+  void update(KeyT key, std::function<bool (std::string &record)> callback) {
+    uint32_t at;
+    bool found;
+    auto targetNode = searchNode(getRoot(), key, at, found);
+    if (!found) {
+      throw KeyNotFound(key, "Key not found!");
+    }
+    else {
+      auto dataLoc = targetNode->getDataLocation(at);
+      RecordManager::getInstance()->updateOneRecord(this->sTableName, dataLoc, callback);
+    }
+  }
+
+  /**
+   * Update a data of a key.
+   * @param key
+   * If checker returns true, then it is updated.
+   */
+  void updateSelected(KeyT key, std::function<bool (std::string &)> callback) {
+    std::string ptrs = get(key);
+
+    update(key, [this, key, &ptrs, &callback](std::string &recordData) -> bool {
+      int count = ptrs.size() / LocLength;
+      for (int i = 0; i < count; ++i) {
+        Location loc = stringToLocation(ptrs.substr(i * LocLength, LocLength));
+        RecordManager::getInstance()->updateOneRecord(this->sTableName, loc, callback);
+      }
+      return true;
+    });
+  }
+
+
+  /**
    * Remove a key.
    * @param key
    * @throws KeyNotFound
@@ -618,6 +700,34 @@ public:
       deleteNode(targetNode, key);
     }
   }
+
+  /**
+   * Remove a key.
+   * @param targetNode
+   * @param key
+   * If checker returns true, then it is removed.
+   */
+  void removeSelected(KeyT key, std::function<bool (const std::string &)> checker, bool fixed) {
+    std::string ptrs = get(key);
+
+    update(key, [this, key, fixed, &ptrs, &checker](std::string &recordData) -> bool {
+      int count = ptrs.size() / LocLength;
+      std::string newRecordData;
+      for (int i = 0; i < count; ++i) {
+        Location loc = stringToLocation(ptrs.substr(i * LocLength, LocLength));
+        auto record = RecordManager::getInstance()->getRecord(this->sTableName, loc);
+        if (checker(record)) {
+          RecordManager::getInstance()->delOneRecord(this->sTableName, loc.pageNumber, loc.loc, fixed);
+        }
+        else {
+          newRecordData += record;
+        }
+      }
+      recordData = newRecordData;
+      return true;
+    });
+  }
+
   void deleteNode(std::shared_ptr<Node> targetNode, KeyT key) {
     auto parent = targetNode->getParent();
     // targetNode is root node
@@ -786,6 +896,22 @@ private:
                             << rootLoc.loc << ")";
 
     storeRootLocation(rootLoc);
+  }
+  static std::string locationToString(const Location &loc) {
+    uint16_t off = static_cast<uint16_t>(loc.loc);
+    uint32_t pn = static_cast<uint32_t>(loc.pageNumber);
+    std::string str(sizeof(off) + sizeof(pn), 0);
+    memcpy(str.c_str(), &off, sizeof(off));
+    memcpy(str.c_str() + sizeof(off), &pn, sizeof(pn));
+    return str;
+  }
+  static Location stringToLocation(const std::string &str) {
+    uint16_t off;
+    uint32_t pn;
+    memcpy(&off, str.c_str(), sizeof(off));
+    memcpy(&pn, str.c_str() + sizeof(off), sizeof(pn));
+    Location loc(pn, off);
+    return loc;
   }
   void storeRootLocation(Location loc) {
     auto page0 = pPager->getPage(0);

@@ -36,6 +36,8 @@ namespace tinydbpp {
         Location* tryInsert(std::shared_ptr<Page>, const std::string &record, bool fixed);
         void update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
                     std::function<void(std::vector<std::string>&)>&);
+        void updateOneRecord(const std::string &table_name, std::vector<std::string> &vec,
+                             int pageID, int now);
 
         void del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
                  std::function<void(const std::vector<std::string>&)>&);
