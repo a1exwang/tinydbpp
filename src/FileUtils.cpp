@@ -9,8 +9,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
+#include <boost/filesystem.hpp>
+#include <iostream>
+#include <string>
 using namespace tinydbpp;
-
+using namespace boost::filesystem;
+using namespace std;
 int64_t FileUtils::fileSize(int fd) {
   struct stat statBuf;
   int rc = fstat(fd, &statBuf);
@@ -82,4 +86,12 @@ int FileUtils::createFile(const char *str) {
     fclose(res);
     if(res == NULL) return -1;
     else return 0;
+}
+
+std::vector<std::string> FileUtils::listFiles(const char *dir) {
+    std::vector<std::string> ret;
+    for (directory_iterator itr(dir); itr!=directory_iterator(); ++itr)
+    {
+        ret.push_back(itr->path().filename().string()); // display filename only
+    }
 }

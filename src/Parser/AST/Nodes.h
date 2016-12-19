@@ -9,7 +9,10 @@ namespace ast {
 
 class Node {
 public:
+  std::shared_ptr<Node> ch[3];
+  Node():ch{nullptr}{}
   virtual ~Node() {}
+    virtual void exec(){};
 };
 
 class Statement :public Node {
@@ -38,6 +41,7 @@ public:
       DropIdx
   };
 public:
+    virtual void exec();
   Statement(Type type) :type(type) { }
   virtual ~Statement() { }
   Type getType() const { return type; }

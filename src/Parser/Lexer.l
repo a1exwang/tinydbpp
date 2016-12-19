@@ -16,7 +16,6 @@
 %option prefix="SQL"
 %option stack
 
-SIMPLE_OPERATOR = ("="|"<"|">"|"("|")"|"."|"*"|",")
 %%
 [ \t\r\n\v]+ {
     // Ignore all spaces
@@ -75,7 +74,7 @@ SIMPLE_OPERATOR = ("="|"<"|">"|"("|")"|"."|"*"|",")
 ; {
     return Token::SEMICOLON;
 }
-SIMPLE_OPERATOR {
+"="|"<"|">"|"("|")"|"."|"*"|"," {
     yylval.becomeBasicSymbol(yytext, yyleng);
     return yytext[0];
 }
@@ -83,5 +82,5 @@ SIMPLE_OPERATOR {
 "<>" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_NEQ; }
 "<=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_LEQ; }
 ">=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_GEQ; }
-
+. { BOOST_ASSERT(0);}
 %%
