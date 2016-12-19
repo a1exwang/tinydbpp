@@ -72,7 +72,7 @@ sys_stmt: KW_SHOW KW_DATABASES {
 
 
 table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
-                $$.makecreateTbNode($5);
+                $$.makecreateTbNode($3, $5);
             }
            | KW_DROP KW_TABLE IDENTIFIER{
                 $$.makeDropTbNode($3);
@@ -101,7 +101,9 @@ idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
             }
 
 fieldList:  field {
-                $$ = ParserVal(std::shared_ptr<ast::FieldList>(new ast::FieldList()));
+                std::shared_ptr<ast::FieldList> fields(new ast::FieldList());
+                fields->vec.push_back(*std::dynamic_pointer_cast<ast::Field>($1.getNode()));
+                $$ = ParserVal(fields);
             }
             | fieldList ',' field {
                 auto fields = std::dynamic_pointer_cast<ast::FieldList>($1.getNode());

@@ -98,8 +98,9 @@ void ParserVal::makeDropDbNode(const ParserVal &ch0) {
 
 }
 
-void ParserVal::makeUseDbNode(const ParserVal &target) {
-  node = std::make_shared<ast::SysManagement>(target, ast::Statement::Type::UseDb);
+void ParserVal::makeUseDbNode(const ParserVal &ch0) {
+  node = std::make_shared<ast::SysManagement>(ch0, ast::Statement::Type::UseDb);
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 }
 
 void ParserVal::becomeBasicSymbol(const char *str, size_t len) {
@@ -107,9 +108,10 @@ void ParserVal::becomeBasicSymbol(const char *str, size_t len) {
   strVal = string(str, len);
 }
 
-void ParserVal::makecreateTbNode(const ParserVal &fieldList) {
+void ParserVal::makecreateTbNode(const ParserVal &ch0, const ParserVal &ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::CreateTable);
-
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 }
 
 void ParserVal::makeDropTbNode(const ParserVal & ch0) {

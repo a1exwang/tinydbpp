@@ -4,7 +4,11 @@
 #include <cassert>
 #include <iostream>
 #include <FileUtils.h>
+#include <Pager/Pager.h>
+#include <Pager/Page.h>
 #include <RecordManage/TableManager.h>
+#include <stdlib.h>
+#include <cmath>
 using namespace std;
 using namespace tinydbpp::ast;
 
@@ -119,12 +123,38 @@ void Statement::exec() {
     }else if(type == CreateDb){
         TableManager::getInstance()->createDB(ch[0]->strVal);
     }else if(type == DropDb){
-
+        TableManager::getInstance()->DropDB(ch[0]->strVal);
     }else if(type == UseDb){
-
+        if(!TableManager::getInstance()->changeDB(ch[0]->strVal, false))
+            cout << "No such Database."<<endl;
     }else if(type == ShowTables){
+        if(TableManager::getInstance()->hasDB()){
 
-    }else{
-
+        }else cout << "No Database was specified."<<endl;
+    }else if(type == CreateTable){
+        if(TableManager::getInstance()->hasDB()){
+            auto fl = std::dynamic_pointer_cast<FieldList>(ch[1]->getNode());
+            fl->checkPrimaryKey();
+            function<void(tinydbpp::Pager *)> writeScheme = [&fl](tinydbpp::Pager * ptr){
+                auto p = ptr->getPage(0);
+                char* buf = p->getBuf();
+                char size_str[20];
+                sprintf(size_str, "%d", (int)fl->vec.size());
+                string tmp = string("    ") + size_str + " ";
+                for(auto &f : fl->vec){
+                    if(f.is_primary_key_stmt) continue;
+                    int k = f.type == "varchar"? -1 : ((f.size + 3) / 4);//bits to
+                    sprintf(size_str, "%d", k);
+                    //can null 0 not null 1
+                    tmp = tmp + f.name + " " + f.type + " " + size_str + " " + ((f.is_key | !f.can_null)? string("1 "):string("0 "))
+                          + (f.is_key? string("1 ") : string("0 ")); // unique
+                    //TODO create index here
+                }
+                sprintf(buf, "%s" , tmp.c_str());
+                p->markDirty();
+                p->releaseBuf(buf);
+            };
+            TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme);
+        }else cout << "No Database was specified."<<endl;
     }
 }

@@ -12,6 +12,7 @@
 #include <boost/lexical_cast.hpp>
 #include <iostream>
 #include <FileUtils.h>
+#include <Pager/Page.h>
 
 namespace tinydbpp {
 
@@ -21,7 +22,8 @@ namespace tinydbpp {
              * if pattern[x] > 0, it represents a fixed length of pattern[x] bytes
              * if pattern[x] == -1, it represents a varying length which the first 4 bytes is a int representing length
              */
-            std::vector<int> pattern;
+            std::vector<int> pattern, col_not_null, col_unique, col_has_index;
+            std::vector<std::string> col_name, col_type;
             std::string name, path;
             std::shared_ptr<Pager> my_pager;
             TableDescription(): len(0), my_pager(nullptr){}
@@ -64,10 +66,12 @@ namespace tinydbpp {
             base_dir = _dir;
             return true;
         }
+        bool hasDB(){return getInstance()->dbname != "";}
         bool changeDB(std::string db, bool auto_create = true);
         void createDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
         bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
+        bool DropDB(std::string db);
     };
 
 
