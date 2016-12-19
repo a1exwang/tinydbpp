@@ -111,12 +111,13 @@ void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<Whe
  */
 void Statement::exec() {
     if(type == ShowDbs){
+        TableManager::getInstance(); // create base dir
         auto file_name_list = FileUtils::listFiles(TableManager::base_dir.c_str());
         for(auto & str : file_name_list)
-            cout << str<< " ";
+            cout << str << " ";
         cout <<endl;
     }else if(type == CreateDb){
-
+        TableManager::getInstance()->createDB(ch[0]->strVal);
     }else if(type == DropDb){
 
     }else if(type == UseDb){

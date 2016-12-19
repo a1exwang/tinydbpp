@@ -100,6 +100,13 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
     return true;
 }
 
+void TableManager::createDB(std::string db) {
+    string dbtable_name = this->base_dir + "/" + db + "/" + SYS_TABLE_NAME;
+    cout << dbtable_name<<endl;
+    if(!FileUtils::isExist(dbtable_name.c_str()))
+            FileUtils::createFile(dbtable_name.c_str());
+}
+
 
 bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
     string whole_name = dir + "/" + name;

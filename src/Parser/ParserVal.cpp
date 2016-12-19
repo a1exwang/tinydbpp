@@ -81,7 +81,7 @@ void ParserVal::becomeIdentifier(const char *str, size_t len) {
 
 void ParserVal::makeCreateDbNode(const ParserVal & ch0) {
   node = std::make_shared<ast::SysManagement>(ch0, ast::Statement::Type::CreateDb);
-    node->ch[0] = ch0.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 }
 
 void ParserVal::makeShowDbsNode() {
@@ -93,8 +93,8 @@ void ParserVal::makeShowTablesNode() {
 }
 
 void ParserVal::makeDropDbNode(const ParserVal &ch0) {
-  node = std::make_shared<ast::SysManagement>(target, ast::Statement::Type::DropDb);
-    node->ch[0] = ch0.getNode();
+  node = std::make_shared<ast::SysManagement>(ch0, ast::Statement::Type::DropDb);
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 
 }
 
@@ -114,49 +114,49 @@ void ParserVal::makecreateTbNode(const ParserVal &fieldList) {
 
 void ParserVal::makeDropTbNode(const ParserVal & ch0) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DropTable);
-    node->ch[0] = ch0.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 }
 
 void ParserVal::makeDescribeTbNode(const ParserVal & ch0) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DesribeTable);
-    node->ch[0] = ch0.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 }
 
 void ParserVal::makeInsertTbNode(const ParserVal & ch0, const ParserVal & ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::InsertItem);
-    node->ch[0] = ch0.getNode();
-    node->ch[1] = ch1.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 }
 
 void ParserVal::makeDeleteTbNode(const ParserVal & ch0, const ParserVal & ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DeleteItem);
-    node->ch[0] = ch0.getNode();
-    node->ch[1] = ch1.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 
 }
 
 void ParserVal::makeUpdateTbNode(const ParserVal & ch0, const ParserVal & ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::UpdateItem);
-    node->ch[0] = ch0.getNode();
-    node->ch[1] = ch1.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 }
 
 void ParserVal::makeSelectTbNode(const ParserVal & ch0, const ParserVal & ch1, const ParserVal & ch2) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::SelectItem);
-    node->ch[0] = ch0.getNode();
-    node->ch[1] = ch1.getNode();
-    node->ch[2] = ch2.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
+    node->ch[2] = std::make_shared<ParserVal>(ch2);
 
 }
 
 void ParserVal::makeCreateIdxNode(const ParserVal & ch0) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::CreateIdx);
-    node->ch[0] = ch0.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 
 }
 
 void ParserVal::makeDropIdxNode(const ParserVal & ch0) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DropIdx);
-    node->ch[0] = ch0.getNode();
+    node->ch[0] = std::make_shared<ParserVal>(ch0);
 }
 
