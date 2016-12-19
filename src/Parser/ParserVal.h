@@ -47,7 +47,7 @@ public:
   void makeDropDbNode(const ParserVal &target);
   void makeUseDbNode(const ParserVal &target);
   void makeShowTablesNode();
-  void makecreateTbNode(const ParserVal &target);
+  void makecreateTbNode(const ParserVal &target, const ParserVal &);
   void makeDropTbNode(const ParserVal &target);
     void makeDescribeTbNode(const ParserVal &);
     void makeInsertTbNode(const ParserVal &, const ParserVal &);

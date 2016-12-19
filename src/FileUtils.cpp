@@ -99,3 +99,11 @@ std::vector<std::string> FileUtils::listFiles(const char *dir) {
     }
     return ret;
 }
+
+bool FileUtils::DeleteDir(const char *dir){
+    if(exists(path(dir))){
+        remove_all(path(dir));
+        return true;
+    }
+    return false;
+}

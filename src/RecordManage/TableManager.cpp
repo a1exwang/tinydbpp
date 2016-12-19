@@ -4,6 +4,7 @@
 
 #include <TableManager.h>
 #include <iostream>
+#include <sstream>
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
@@ -72,13 +73,30 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
     shared_ptr<TableDescription> ret(new TableDescription());
     ret->name = name;
     ret->path = dir + "/" + name;
-    //TODO parse schema
     auto parse_func = [](shared_ptr<TableDescription> new_td){
         //0.this function should be implemented in parser module, this is a test func
         //1.read from page(0) in new_td->getPager()->getPage(0) and parse
         //2.add bytes pattern of new_td;
         //3.if necessary add other properties in TableDescription class(whether there is a index)
-        new_td->addPattern(4);
+        auto p = new_td->getPager()->getPage(0);
+        char* buf = p->getBuf();
+        istringstream istr;
+        istr.str(buf);
+        int num;
+        istr >> num;
+        for(int i = 0;i < num;i++)
+        {
+            string n,t;
+            int pat, b1, b2;
+            istr >> n >> t >> pat >> b1 >> b2;
+            new_td->col_name.push_back(n);
+            new_td->col_type.push_back(t);
+            new_td->addPattern(pat);
+            new_td->col_not_null.push_back(b1);
+            new_td->col_unique.push_back(b2);
+            //TODO check has index
+        }
+        p->releaseBuf(buf);
     };
     parse_func(ret);
     table_map.push_back(ret);
@@ -94,6 +112,7 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
             return false;
         else
             FileUtils::createFile(dbtable_name.c_str());
+    //TODO find index cols and get a map
     this->dbname = db;
     this->dir = this->base_dir + "/" + db;
     table_map.clear();
@@ -102,11 +121,17 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
 
 void TableManager::createDB(std::string db) {
     string dbtable_name = this->base_dir + "/" + db + "/" + SYS_TABLE_NAME;
-    cout << dbtable_name<<endl;
     if(!FileUtils::isExist(dbtable_name.c_str()))
             FileUtils::createFile(dbtable_name.c_str());
 }
 
+bool TableManager::DropDB(std::string db) {
+    if(dbname == db){
+        dbname = "";
+        table_map.clear();
+    }
+    return FileUtils::DeleteDir((this->base_dir + "/" + db).c_str());
+}
 
 bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
     string whole_name = dir + "/" + name;
@@ -114,14 +139,12 @@ bool TableManager::buildTable(std::string name, std::function<void(Pager *)> cal
         return false;
     else{
         shared_ptr<Pager> ptr( new Pager(whole_name, Pager::ReadWrite) );
-        shared_ptr<Page> p = ptr->getPage(0);
-        shared_ptr<Page> dic_p = ptr->getPage(1);
         if (callback) {
             callback(ptr.get());
         }
         ptr->writeBackAll();
-        //TODO write scheme
         return true;
     }
 }
+
 

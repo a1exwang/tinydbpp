@@ -88,7 +88,7 @@ public:
         is_primary_key_stmt = false;
         size = 0;
     }
-    Field(std::string _n, std::string _t, int s, bool _null, bool _key, bool _is_p_stmt = false):name(_n),type(_t), can_null(_null), is_key(_key)
+    Field(std::string _n, std::string _t, int s, bool _null, bool _key, bool _is_p_stmt = false):name(_n),type(_t),size(s),can_null(_null), is_key(_key)
             ,is_primary_key_stmt(_is_p_stmt){
     }
     std::string name;

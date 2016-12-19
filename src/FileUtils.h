@@ -20,7 +20,9 @@ public:
     static int createDir(const char *sPathName);
     static int createFile(const char *str);
     static std::vector<std::string> listFiles(const char* dir);
-};
+    static bool DeleteDir(const char *dir);
+
+    };
 }
 
 
