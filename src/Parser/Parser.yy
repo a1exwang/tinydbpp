@@ -33,7 +33,7 @@ using namespace std;
 %token IDENTIFIER STRING INT FLOAT
 %token SEMICOLON
 %token UNKNOWN
-%token '=' '<' '>' '(' ')' '.'
+%token '=' '<' '>' '(' ')' '.' '*' ','
 
 %parse-param { class Lexer &lexer } { std::shared_ptr<tinydbpp::ast::Node> &rootNode }
 
@@ -71,13 +71,15 @@ sys_stmt: KW_SHOW KW_DATABASES {
     }
 
 
-table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldLists ')'{
+table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
                 $$.makecreateTbNode($5);
             }
            | KW_DROP KW_TABLE IDENTIFIER{
                 $$.makeDropTbNode($3);
            }
-           //| KW_DESC IDENTIFIER
+           | KW_DESC IDENTIFIER{
+                $$.makeDescribeTbNode($2);
+           }
            | KW_INSERT KW_INTO IDENTIFIER KW_VALUES valueLists{
                 $$.makeInsertTbNode($3, $5);
            }
@@ -87,7 +89,7 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldLists ')'{
            | KW_UPDATE IDENTIFIER KW_SET setClause KW_WHERE whereClause{
                 $$.makeUpdateTbNode($3, $5);
            }
-           | KW_SELECT selector FROM tableList KW_WHERE whereClause{
+           | KW_SELECT selector KW_FROM tableList KW_WHERE whereClause{
                 $$.makeSelectTbNode($2, $4, $6);
            }
 
@@ -99,23 +101,23 @@ idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
             }
 
 fieldList:  field {
-                $$ = ParserVal(std::shared_ptr<FieldList>(new FieldList()));
+                $$ = ParserVal(std::shared_ptr<ast::FieldList>(new ast::FieldList()));
             }
             | fieldList ',' field {
                 auto fields = std::dynamic_pointer_cast<ast::FieldList>($1.getNode());
-                fields->vec.push_back(*($3.getNode()));
+                fields->vec.push_back(*std::dynamic_pointer_cast<ast::Field>($3.getNode()));
             }
 
 field: IDENTIFIER type{
-            std::shared_ptr<Field> ptr(new Field($1.strVal, $2.strVal, $2.iVal, true, false));
+            std::shared_ptr<ast::Field> ptr(new ast::Field($1.strVal, $2.strVal, $2.iVal, true, false));
             $$ = ParserVal(ptr);
          }
-         | IDENTIFIER type NOT NULL{
-            auto ptr = new Field($1.strVal, $2.strVal, $2.iVal, false, false);
+         | IDENTIFIER type KW_NOT KW_NULL{
+            std::shared_ptr<ast::Field> ptr (new ast::Field($1.strVal, $2.strVal, $2.iVal, false, false));
             $$ = ParserVal(ptr);            
          }
          | KW_PRIMARY KW_KEY '(' IDENTIFIER ')'{
-            auto ptr = new Field($4.strVal, "", 0, false, false, true);
+            std::shared_ptr<ast::Field> ptr (new ast::Field($4.strVal, "", 0, false, false, true));
             $$ = ParserVal(ptr);
          }
 
@@ -130,7 +132,7 @@ type:
     }
 
 valueLists  : '(' valueList ')'{
-        std::shared_ptr<ValueLists> ptr(new ValueLists());
+        std::shared_ptr<ast::ValueLists> ptr(new ast::ValueLists());
         auto vlist = std::dynamic_pointer_cast<ast::ValueList>($2.getNode());
         ptr->push_back(vlist);
         $$ = ParserVal(ptr);
@@ -143,7 +145,7 @@ valueLists  : '(' valueList ')'{
     }
 
 valueList : value{
-        std::shared_ptr<ValueList> ptr(new ValueList());
+        std::shared_ptr<ast::ValueList> ptr(new ast::ValueList());
         auto v = std::dynamic_pointer_cast<ast::Value>($1.getNode());
         ptr->push_back(v);
         $$ = ParserVal(ptr);
@@ -156,26 +158,40 @@ valueList : value{
     }
 
 value : INT{
-        std::shared_ptr<Value> ptr(new Value("int"));
+        std::shared_ptr<ast::Value> ptr(new ast::Value("int"));
         ptr->iVal = $1.iVal;
         $$ = ParserVal(ptr);
     }
     | STRING{
-        std::shared_ptr<Value> ptr(new Value("string"));
+        std::shared_ptr<ast::Value> ptr(new ast::Value("string"));
         ptr->strVal = $1.strVal;
         $$ = ParserVal(ptr);
     }
     | KW_NULL{
-        std::shared_ptr<Value> ptr(new Value("NULL"));
+        std::shared_ptr<ast::Value> ptr(new ast::Value("NULL"));
         $$ = ParserVal(ptr);
     }
 
 whereClause : col op expr {
-                
+                std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
+                ptr->becomeCompare($1.strVal, $2.strVal, *std::dynamic_pointer_cast<ast::Value>($3.getNode()) );
+                $$ = ParserVal(ptr);
             }
-            | col KW_IS KW_NULL
-            | col KW_IS KW_NOT KW_NULL
-            | whereClause AND whereClause 
+            | col KW_IS KW_NULL{
+                std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
+                ptr->becomeIsNull($1.strVal);
+                $$ = ParserVal(ptr);
+            }
+            | col KW_IS KW_NOT KW_NULL{
+                std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
+                ptr->becomeIsNull($1.strVal);
+                $$ = ParserVal(ptr);
+            }
+            | whereClause KW_AND whereClause{
+                std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
+                ptr->becomeAnd(std::dynamic_pointer_cast<ast::WhereClause>($1.getNode()), std::dynamic_pointer_cast<ast::WhereClause>($3.getNode()));
+                $$ = ParserVal(ptr);
+            } 
 col : IDENTIFIER '.' IDENTIFIER{
         $$.strVal = $1.strVal + "." + $3.strVal;
     }
@@ -184,6 +200,56 @@ col : IDENTIFIER '.' IDENTIFIER{
     }
 
 op : '='{$$ = $1;} | KW_NEQ {$$ = $1;}| KW_LEQ {$$ = $1;}| KW_GEQ{$$ = $1;} | '<'{$$ = $1;} | '>'{$$ = $1;}
+
+expr : value{$$ = $1;} | col{
+        std::shared_ptr<ast::Value> ptr(new ast::Value("col"));
+        ptr->strVal = $1.strVal;
+        $$ = ParserVal(ptr);
+    }
+
+ setClause : IDENTIFIER '=' value {
+            std::shared_ptr<ast::SetClause> ptr(new ast::SetClause());
+            ptr->push_back($1.strVal, *std::dynamic_pointer_cast<ast::Value>($3.getNode()) );
+            $$ = ParserVal(ptr);
+        }
+        | setClause ',' IDENTIFIER '=' value {
+            auto ptr = std::dynamic_pointer_cast<ast::SetClause>($1.getNode());
+            ptr->push_back($3.strVal, *std::dynamic_pointer_cast<ast::Value>($5.getNode()));
+            $$ = $1;
+        }
+
+ selector   : '*'{ 
+                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                ptr->setAll();
+                $$ = ParserVal(ptr);
+            }
+            |  colList{
+                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                ptr->setColList(std::dynamic_pointer_cast<ast::ColList>($1.getNode()) );
+                $$ = ParserVal(ptr);
+            }
+
+ colList : col{
+        std::shared_ptr<ast::ColList> ptr(new ast::ColList());
+        ptr->push_back($1.strVal);
+        $$ = ParserVal(ptr);
+    } | colList ',' col{
+        auto ptr = std::dynamic_pointer_cast<ast::ColList>($1.getNode());
+        ptr->push_back($3.strVal);
+        $$ = $1;
+    }
+
+ tableList  :  IDENTIFIER {
+           std::shared_ptr<ast::TableList> ptr(new ast::TableList());
+           ptr->push_back($1.strVal);
+           $$ = ParserVal(ptr);
+        }
+        |  tableList ',' IDENTIFIER {
+            auto ptr = std::dynamic_pointer_cast<ast::TableList>($1.getNode());
+            ptr->push_back($3.strVal);
+            $$ = $1;
+        }
+
 
 
 // id_list: IDENTIFIER

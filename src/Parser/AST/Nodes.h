@@ -25,7 +25,17 @@ public:
     SysManagementEnds,
 
     TableManagementBegins,
+      CreateTable,
+      DropTable,
+      DesribeTable,
+      InsertItem,
+      DeleteItem,
+      UpdateItem,
+      SelectItem,
     TableManagementEnds,
+
+      CreateIdx,
+      DropIdx
   };
 public:
   Statement(Type type) :type(type) { }
@@ -45,6 +55,12 @@ private:
   std::shared_ptr<ParserVal> target;
 };
 
+class TableManagement :public Statement {
+public:
+    TableManagement(Statement::Type type) :Statement(type) { }
+    virtual ~TableManagement() { }
+private:
+};
 class Statements :public Node {
 public:
   Statements() { }
@@ -113,15 +129,44 @@ public:
     }
 };
 
-class whereClause : public Node{
+class WhereClause : public Node{
 public:
-    std::vector<std::string> names;
-    std::function<bool(const std::vector<std::string>&, const std::vector<int>&, const std::vector<std::string>&)> func;
+    std::vector<std::string> names, ops;
+    std::vector<Value> exprs;
     void becomeCompare(const std::string& colname, const std::string& op, Value v);
     void becomeIsNull(const std::string& colname);
     void becomeIsNotNull(const std::string& colname);
-    void becomeAnd(std::shared_ptr<whereClause> w1, std::shared_ptr<whereClause> w2);
+    void becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<WhereClause> w2);
 };
 
+class SetClause : public Node{
+public:
+    std::vector<std::string> cols;
+    std::vector<Value> values;
+    void push_back(std::string colname, Value v){
+        cols.push_back(colname);
+        values.push_back(v);
+    }
+};
+
+class ColList : public  Node{
+public:
+    std::vector<std::string> cols;
+    void push_back(std::string colname){ cols.push_back(colname);}
+};
+
+class Selector : public Node{
+public:
+    bool isAll;
+    std::shared_ptr<ColList> col_list;
+    Selector():isAll(false),col_list(nullptr){}
+    void setAll(){ isAll = true;}
+    void setColList(std::shared_ptr<ColList> _c){ col_list = _c;}
+};
+class TableList : public  Node{
+    public:
+        std::vector<std::string> tables;
+        void push_back(std::string tablename){ tables.push_back(tablename);}
+};
 }
 }
