@@ -13,11 +13,36 @@ void Statements::addStatementToFront(std::shared_ptr<Statement> stmt) {
   statements.insert(statements.begin(), stmt);
 }
 
-void whereClause::becomeCompare(const std::string &colname, const std::string &op, Value v) {
+void WhereClause::becomeCompare(const std::string &colname, const std::string &op, Value v) {
     names.push_back(colname);
-    if(v.type == "col")
-        names.push_back(v.strVal);
-    func = [op, v](const std::vector<std::string>& item, const std::vector<int>& offset,const std::vector<std::string>& types){
+    ops.push_back(op);
+    exprs.push_back(v);
+}
+
+void WhereClause::becomeIsNull(const std::string &colname) {
+    names.push_back(colname);
+    ops.push_back("isnull");
+    exprs.push_back(Value("null"));
+}
+
+void WhereClause::becomeIsNotNull(const std::string &colname) {
+    names.push_back(colname);
+    ops.push_back("isnotnull");
+    exprs.push_back(Value("null"));
+}
+
+void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<WhereClause> w2) {
+    names = w1->names;
+    ops = w1->ops;
+    exprs = w1->exprs;
+    for(size_t i = 0;i < w2->names.size();i++){
+        names.push_back(w2->names[i]);
+        ops.push_back(w2->ops[i]);
+        exprs.push_back(w2->ops[i]);
+    }
+}
+/*
+ * func = [op, v](const std::vector<std::string>& item, const std::vector<int>& offset,const std::vector<std::string>& types){
         if(v.type == "col"){
             if(types[0] != types[1]) assert(0);// type check failed
             if(types[0] == "int"){
@@ -80,29 +105,4 @@ void whereClause::becomeCompare(const std::string &colname, const std::string &o
         return false;
     };
 
-}
-
-void whereClause::becomeIsNull(const std::string &colname) {
-    names.push_back(colname);
-    func = [](const std::vector<std::string> &item, const std::vector<int> &offset,
-              const std::vector<std::string> &types) {
-        char a_null = *(item[offset[0]].end() - 1);
-        return a_null > 0;
-    };
-}
-
-void whereClause::becomeIsNotNull(const std::string &colname) {
-    names.push_back(colname);
-    func = [](const std::vector<std::string> &item, const std::vector<int> &offset,
-              const std::vector<std::string> &types) {
-        char a_null = *(item[offset[0]].end() - 1);
-        return a_null == 0 || a_null == 2;
-    };
-}
-
-void whereClause::becomeAnd(std::shared_ptr<whereClause> w1, std::shared_ptr<whereClause> w2) {
-    names = w1->names;
-    for(auto & str : w2->names)
-        names.push_back(str);
-
-}
+ */

@@ -47,10 +47,17 @@ public:
   void makeDropDbNode(const ParserVal &target);
   void makeUseDbNode(const ParserVal &target);
   void makeShowTablesNode();
-
+  void makecreateTbNode(const ParserVal &target);
+  void makeDropTbNode(const ParserVal &target);
+    void makeDescribeTbNode(const ParserVal &);
+    void makeInsertTbNode(const ParserVal &, const ParserVal &);
+    void makeDeleteTbNode(const ParserVal &,const ParserVal &);
+    void makeUpdateTbNode(const ParserVal &, const ParserVal &);
+    void makeSelectTbNode(const ParserVal &, const ParserVal &, const ParserVal &);
+    void makeCreateIdxNode(const ParserVal &);
+    void makeDropIdxNode(const ParserVal &);
   std::string toString() const;
 
-private:
   Type type = Unknown;
   int iVal = 0;
   double dVal = 0;

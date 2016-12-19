@@ -16,7 +16,7 @@
 %option prefix="SQL"
 %option stack
 
-SIMPLE_OPERATOR = ("="|"<"|">"|"("|")"|".")
+SIMPLE_OPERATOR = ("="|"<"|">"|"("|")"|"."|"*"|",")
 %%
 [ \t\r\n\v]+ {
     // Ignore all spaces

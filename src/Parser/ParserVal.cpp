@@ -104,3 +104,43 @@ void ParserVal::becomeBasicSymbol(const char *str, size_t len) {
   strVal = string(str, len);
 }
 
+void ParserVal::makecreateTbNode(const ParserVal &target) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::CreateTable);
+}
+
+void ParserVal::makeDropTbNode(const ParserVal &target) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DropTable);
+}
+
+void ParserVal::makeDescribeTbNode(const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DesribeTable);
+}
+
+void ParserVal::makeInsertTbNode(const ParserVal &, const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::InsertItem);
+
+}
+
+void ParserVal::makeDeleteTbNode(const ParserVal &, const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DeleteItem);
+
+}
+
+void ParserVal::makeUpdateTbNode(const ParserVal &, const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::UpdateItem);
+}
+
+void ParserVal::makeSelectTbNode(const ParserVal &, const ParserVal &, const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::SelectItem);
+
+}
+
+void ParserVal::makeCreateIdxNode(const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::CreateIdx);
+
+}
+
+void ParserVal::makeDropIdxNode(const ParserVal &) {
+    node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DropIdx);
+}
+
