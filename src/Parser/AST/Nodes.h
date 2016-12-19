@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <Parser/ParserVal.h>
+#include <functional>
 
 namespace tinydbpp {
 namespace ast {
@@ -90,8 +91,37 @@ public:
     }
 };
 
+class Value : public Node{
+public:
+    std::string type;
+    std::string strVal;
+    int iVal;
+    Value(std::string _t):strVal(_t){}
+};
+class ValueList : public Node{
+public:
+    std::vector<std::shared_ptr<Value>> vec;
+    void push_back(std::shared_ptr<Value> p){
+        vec.push_back(p);
+    }
+};
+class ValueLists : public Node{
+public:
+    std::vector<std::shared_ptr<ValueList>> vec;
+    void push_back(std::shared_ptr<ValueList> p){
+        vec.push_back(p);
+    }
+};
 
-
+class whereClause : public Node{
+public:
+    std::vector<std::string> names;
+    std::function<bool(const std::vector<std::string>&, const std::vector<int>&, const std::vector<std::string>&)> func;
+    void becomeCompare(const std::string& colname, const std::string& op, Value v);
+    void becomeIsNull(const std::string& colname);
+    void becomeIsNotNull(const std::string& colname);
+    void becomeAnd(std::shared_ptr<whereClause> w1, std::shared_ptr<whereClause> w2);
+};
 
 }
 }

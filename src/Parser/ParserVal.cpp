@@ -99,3 +99,8 @@ void ParserVal::makeUseDbNode(const ParserVal &target) {
   node = std::make_shared<ast::SysManagement>(target, ast::Statement::Type::UseDb);
 }
 
+void ParserVal::becomeBasicSymbol(const char *str, size_t len) {
+  type = BasicSymbol;
+  strVal = string(str, len);
+}
+

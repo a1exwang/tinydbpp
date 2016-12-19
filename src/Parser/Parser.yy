@@ -29,11 +29,11 @@ using namespace std;
 %define api.value.type {ParserVal}
 %define parser_class_name {Parser}
 
-%token KW_DATABASE KW_DATABASES KW_TABLE KW_TABLES KW_SHOW KW_CREATE KW_DROP KW_USE KW_PRIMARY KW_KEY KW_NOT KW_NULL KW_INSERT KW_INTO KW_VALUES KW_DELETE KW_FROM KW_WHERE KW_UPDATE KW_SET KW_SELECT KW_IS KW_INT KW_VARCHAR KW_DESC KW_INDEX KW_AND
+%token KW_DATABASE KW_DATABASES KW_TABLE KW_TABLES KW_SHOW KW_CREATE KW_DROP KW_USE KW_PRIMARY KW_KEY KW_NOT KW_NULL KW_INSERT KW_INTO KW_VALUES KW_DELETE KW_FROM KW_WHERE KW_UPDATE KW_SET KW_SELECT KW_IS KW_INT KW_VARCHAR KW_DESC KW_INDEX KW_AND KW_NEQ KW_LEQ KW_GEQ
 %token IDENTIFIER STRING INT FLOAT
 %token SEMICOLON
 %token UNKNOWN
-//%token '(' ')'
+%token '=' '<' '>' '(' ')' '.'
 
 %parse-param { class Lexer &lexer } { std::shared_ptr<tinydbpp::ast::Node> &rootNode }
 
@@ -99,22 +99,93 @@ idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
             }
 
 fieldList:  field {
-                $$ = ParserVal(new FieldList());
+                $$ = ParserVal(std::shared_ptr<FieldList>(new FieldList()));
             }
             | fieldList ',' field {
                 auto fields = std::dynamic_pointer_cast<ast::FieldList>($1.getNode());
                 fields->vec.push_back(*($3.getNode()));
             }
 
-field: IDENTIFIER type
-         | IDENTIFIER type NOT NULL
-         | PRIMARY KEY '(' IDENTIFIER ')'
+field: IDENTIFIER type{
+            std::shared_ptr<Field> ptr(new Field($1.strVal, $2.strVal, $2.iVal, true, false));
+            $$ = ParserVal(ptr);
+         }
+         | IDENTIFIER type NOT NULL{
+            auto ptr = new Field($1.strVal, $2.strVal, $2.iVal, false, false);
+            $$ = ParserVal(ptr);            
+         }
+         | KW_PRIMARY KW_KEY '(' IDENTIFIER ')'{
+            auto ptr = new Field($4.strVal, "", 0, false, false, true);
+            $$ = ParserVal(ptr);
+         }
 
 type: 
     KW_INT '(' INT ')'{
-        $$.iVal = 
+        $$.iVal = $3.iVal;
+        $$.strVal = "int";
     }
-    | KW_VARCHAR '(' INT ')'
+    | KW_VARCHAR '(' INT ')'{
+        $$.iVal = $3.iVal;
+        $$.strVal = "varchar";        
+    }
+
+valueLists  : '(' valueList ')'{
+        std::shared_ptr<ValueLists> ptr(new ValueLists());
+        auto vlist = std::dynamic_pointer_cast<ast::ValueList>($2.getNode());
+        ptr->push_back(vlist);
+        $$ = ParserVal(ptr);
+    }
+    | valueLists ',' '(' valueList ')'{
+        auto vlists = std::dynamic_pointer_cast<ast::ValueLists>($1.getNode());
+        auto vlist = std::dynamic_pointer_cast<ast::ValueList>($4.getNode());
+        vlists->push_back(vlist);
+        $$ = $1;
+    }
+
+valueList : value{
+        std::shared_ptr<ValueList> ptr(new ValueList());
+        auto v = std::dynamic_pointer_cast<ast::Value>($1.getNode());
+        ptr->push_back(v);
+        $$ = ParserVal(ptr);
+    }
+    | valueList ',' value{
+        auto vlist = std::dynamic_pointer_cast<ast::ValueList>($1.getNode());
+        auto v = std::dynamic_pointer_cast<ast::Value>($3.getNode());
+        vlist->push_back(v);
+        $$ = $1;
+    }
+
+value : INT{
+        std::shared_ptr<Value> ptr(new Value("int"));
+        ptr->iVal = $1.iVal;
+        $$ = ParserVal(ptr);
+    }
+    | STRING{
+        std::shared_ptr<Value> ptr(new Value("string"));
+        ptr->strVal = $1.strVal;
+        $$ = ParserVal(ptr);
+    }
+    | KW_NULL{
+        std::shared_ptr<Value> ptr(new Value("NULL"));
+        $$ = ParserVal(ptr);
+    }
+
+whereClause : col op expr {
+                
+            }
+            | col KW_IS KW_NULL
+            | col KW_IS KW_NOT KW_NULL
+            | whereClause AND whereClause 
+col : IDENTIFIER '.' IDENTIFIER{
+        $$.strVal = $1.strVal + "." + $3.strVal;
+    }
+    | IDENTIFIER{
+        $$.strVal = $1.strVal;
+    }
+
+op : '='{$$ = $1;} | KW_NEQ {$$ = $1;}| KW_LEQ {$$ = $1;}| KW_GEQ{$$ = $1;} | '<'{$$ = $1;} | '>'{$$ = $1;}
+
+
 // id_list: IDENTIFIER
 //     | id_list IDENTIFIER;
 %%
