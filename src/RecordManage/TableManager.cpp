@@ -73,7 +73,7 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
     shared_ptr<TableDescription> ret(new TableDescription());
     ret->name = name;
     ret->path = dir + "/" + name;
-    auto parse_func = [](shared_ptr<TableDescription> new_td){
+    auto parse_func = [this, &name](shared_ptr<TableDescription> new_td){
         //0.this function should be implemented in parser module, this is a test func
         //1.read from page(0) in new_td->getPager()->getPage(0) and parse
         //2.add bytes pattern of new_td;
@@ -86,15 +86,19 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         istr >> num;
         for(int i = 0;i < num;i++)
         {
-            string n,t;
+            string colName,t;
             int pat, b1, b2;
-            istr >> n >> t >> pat >> b1 >> b2;
-            new_td->col_name.push_back(n);
+            istr >> colName >> t >> pat >> b1 >> b2;
+            new_td->col_name.push_back(colName);
             new_td->col_type.push_back(t);
             new_td->addPattern(pat);
             new_td->col_not_null.push_back(b1);
             new_td->col_unique.push_back(b2);
-            //TODO check has index
+
+            // DONE check has index
+            FileUtils fileUtils;
+            int hasIndex = fileUtils.isExist((dir + "/" + createIndexName(name, colName)).c_str());
+            new_td->col_has_index.push_back(hasIndex);
         }
         p->releaseBuf(buf);
     };
@@ -147,4 +151,14 @@ bool TableManager::buildTable(std::string name, std::function<void(Pager *)> cal
     }
 }
 
+std::string TableManager::createIndexName(const std::string &tableName, const std::string &colName) {
+    return tableName + "_" + colName;
+}
 
+bool TableManager::parseIndex(const std::string &indexName, const std::string &tableName, std::string &colName) {
+    if (indexName.size() > tableName.size() && indexName.substr(0, tableName.size()) == tableName) {
+        colName = indexName.substr(tableName.size() + 1, indexName.size() - (tableName.size() + 1));
+        return true;
+    }
+    return false;
+}

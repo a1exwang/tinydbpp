@@ -106,4 +106,6 @@ public:
 private:
   BT btree;
 };
+
+typedef BTreePlus<uint32_t, 2, 3> TheBTree;
 }

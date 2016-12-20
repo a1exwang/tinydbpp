@@ -9,6 +9,8 @@
 #include <RecordManage/TableManager.h>
 #include <stdlib.h>
 #include <cmath>
+#include <BTree/BTreePlus.h>
+
 using namespace std;
 using namespace tinydbpp::ast;
 
@@ -139,7 +141,7 @@ void Statement::exec() {
         if(TableManager::getInstance()->hasDB()){
             auto fl = std::dynamic_pointer_cast<FieldList>(ch[1]->getNode());
             fl->checkPrimaryKey();
-            function<void(tinydbpp::Pager *)> writeScheme = [&fl](tinydbpp::Pager * ptr){
+            function<void(tinydbpp::Pager *)> writeScheme = [this, &fl](tinydbpp::Pager * ptr){
                 auto p = ptr->getPage(0);
                 char* buf = p->getBuf();
                 char size_str[20];
@@ -152,7 +154,10 @@ void Statement::exec() {
                     //can null 0 not null 1
                     tmp = tmp + f.name + " " + f.type + " " + size_str + " " + ((f.is_key | !f.can_null)? string("1 "):string("0 "))
                           + (f.is_key? string("1 ") : string("0 ")); // unique
-                    //TODO create index here
+
+                    // DONE create index here
+                    auto indexName = TableManager::createIndexName(ch[0]->strVal, f.name);
+                    TheBTree::BT::setupBTree(indexName);
                 }
                 sprintf(buf, "%s" , tmp.c_str());
                 p->markDirty();

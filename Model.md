@@ -25,3 +25,12 @@
     
 #null的处理
     每个item都在最后多一个字节，0表示正常，1表示null，2表示万能匹配
+    
+# 索引文件
+    索引文件名为TableName_ColName
+    索引文件第0页结构:
+    +0x00 uint32      MagicNumber       // 该数字在BTree.h文件中定义
+    +0x04 uint32      NodeSize          // BTree阶数, 即BTree每个Node能存最多个Key的个数
+    +0x08 uint32      RootPageNumber    // BTree根所在的页号
+    +0x0C uint32      RootOffset        // BTree根的页内偏移量
+    +0x10 剩余全为0

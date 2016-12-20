@@ -72,6 +72,8 @@ namespace tinydbpp {
         std::shared_ptr<TableDescription> getTableDescription(std::string);
         bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
         bool DropDB(std::string db);
+        static std::string createIndexName(const std::string &tableName, const std::string &colName);
+        static bool parseIndex(const std::string &indexName, const std::string &tableName, std::string &colName);
     };
 
 
