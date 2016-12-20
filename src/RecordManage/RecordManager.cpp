@@ -368,6 +368,7 @@ namespace tinydbpp {
         shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
         char * dic = dic_page->getBuf();
         shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
+        // FIXME: `pages` may be greater than PAGER_PAGE_SIZE, which will cause a segmentation fault!
         //BOOST_ASSERT(loc.pageNumber - 2 < (int)PAGER_PAGE_SIZE);
         bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
         dic_page->releaseBuf(dic);
