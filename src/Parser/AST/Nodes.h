@@ -42,8 +42,8 @@ public:
   };
 public:
     virtual void exec();
-  Statement(Type type) :type(type) { }
-  virtual ~Statement() { }
+  Statement(Type type);
+  virtual ~Statement();
   Type getType() const { return type; }
 private:
   Type type;
@@ -53,7 +53,7 @@ public:
   SysManagement(Statement::Type type) :Statement(type) { }
   SysManagement(const ParserVal& val, Statement::Type type)
     :Statement(type), target(std::make_shared<ParserVal>(val)) { }
-  virtual ~SysManagement() { }
+  virtual ~SysManagement();
   std::shared_ptr<const ParserVal> getTarget() const;
 private:
   std::shared_ptr<ParserVal> target;
@@ -61,14 +61,14 @@ private:
 
 class TableManagement :public Statement {
 public:
-    TableManagement(Statement::Type type) :Statement(type) { }
-    virtual ~TableManagement() { }
+    TableManagement(Statement::Type type);
+    virtual ~TableManagement();
 private:
 };
 class Statements :public Node {
 public:
   Statements() { }
-  virtual ~Statements() { }
+  virtual ~Statements();
   const std::vector<std::shared_ptr<Statement>> get() const {
     return statements;
   }
@@ -81,7 +81,7 @@ private:
 
 class Field : public Node{
 public:
-    virtual ~Field(){}
+    virtual ~Field();
     Field(){
         can_null = true;
         is_key = false;

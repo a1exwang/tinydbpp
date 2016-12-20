@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(showDatabases) {
 }
 BOOST_AUTO_TEST_CASE(createTable) {
     stringstream ssin, ssout;
-    Lexer lexer(&ssin, &ssout);
+    Lexer lexer(ssin, ssout);
     shared_ptr<ast::Node> node;
     Parser parser(lexer, node);
     ssin << "create database test_database;" << endl;

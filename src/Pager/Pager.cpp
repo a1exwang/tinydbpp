@@ -9,6 +9,7 @@
 #include <boost/log/trivial.hpp>
 #include <cstring>
 #include "FileUtils.h"
+#include <Pager/PagerPerfMon.h>
 
 using namespace tinydbpp;
 using namespace std;
@@ -39,6 +40,8 @@ Pager::Pager(const std::string &sPath, OpenFlag flags, PageID maxPages, bool laz
   auto fileSize = FileUtils::fileSize(this->iFd);
   BOOST_ASSERT(fileSize >= 0 && fileSize % PAGER_PAGE_SIZE == 0);
   this->maxValidPages = (Pager::PageID) (fileSize / PAGER_PAGE_SIZE);
+
+  this->pPerfMon = new PagerPerfMon(this);
 }
 
 Pager::~Pager() {
@@ -53,6 +56,9 @@ Pager::~Pager() {
   for (auto entry : this->mapPages) {
     // BOOST_LOG_TRIVIAL(info) << "Unreleased page " << entry.first << " released.";
     entry.second->pagerDied();
+  }
+  if (this->pPerfMon) {
+    delete pPerfMon;
   }
 }
 

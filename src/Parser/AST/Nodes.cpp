@@ -16,9 +16,13 @@ std::shared_ptr<const tinydbpp::ParserVal> SysManagement::getTarget() const {
   return target;
 }
 
+SysManagement::~SysManagement() { }
+
 void Statements::addStatementToFront(std::shared_ptr<Statement> stmt) {
   statements.insert(statements.begin(), stmt);
 }
+
+Statements::~Statements() { }
 
 void WhereClause::becomeCompare(const std::string &colname, const std::string &op, Value v) {
     names.push_back(colname);
@@ -158,3 +162,13 @@ void Statement::exec() {
         }else cout << "No Database was specified."<<endl;
     }
 }
+
+Statement::~Statement() { }
+
+Statement::Statement(Statement::Type type) :type(type) { }
+
+TableManagement::~TableManagement() { }
+
+TableManagement::TableManagement(Statement::Type type) :Statement(type) { }
+
+Field::~Field() {}

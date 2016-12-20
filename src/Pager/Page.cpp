@@ -3,7 +3,7 @@
 //
 
 #include "Page.h"
-#include <PagerPerfMon.h>
+#include <Pager/PagerPerfMon.h>
 #include "../test/TestUtils.h"
 #include <FileUtils.h>
 #include <boost/assert.hpp>

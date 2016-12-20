@@ -1,6 +1,6 @@
 #include "TestUtils.h"
-#include <Pager.h>
-#include <Page.h>
+#include <Pager/Pager.h>
+#include <Pager/Page.h>
 #include <BTree/BTree.h>
 #include <memory>
 

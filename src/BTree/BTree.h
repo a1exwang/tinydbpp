@@ -2,7 +2,7 @@
 
 #include <RecordManage/RecordManager.h>
 #include <RecordManage/TableManager.h>
-#include <Pager.h>
+#include <Pager/Pager.h>
 #include <string>
 #include <exception>
 #include <functional>
@@ -13,7 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/log/trivial.hpp>
 #include <FileUtils.h>
-#include <Page.h>
+#include <Pager/Page.h>
 #include <json.hpp>
 
 namespace tinydbpp {

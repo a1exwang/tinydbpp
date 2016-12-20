@@ -13,6 +13,7 @@ target_link_libraries(TestRecordManager RecordManager TableManager Pager Page Fi
 
 add_executable(TestBTree TestBTree.cpp)
 target_link_libraries(TestBTree RecordManager TableManager Pager Page FileUtils TestUtils)
+
 add_executable(TestBTreePlus TestBTreePlus.cpp)
 target_link_libraries(TestBTreePlus RecordManager TableManager Pager Page FileUtils TestUtils)
 
@@ -23,4 +24,4 @@ add_executable(TestLexer TestLexer.cpp)
 target_link_libraries(TestLexer SQLParser TestUtils)
 
 add_executable(TestParser TestParser.cpp)
-target_link_libraries(TestParser AST SQLParser TestUtils)
+target_link_libraries(TestParser SQLParser TestUtils)

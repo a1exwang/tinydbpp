@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Pager.h>
+#include <Pager/Pager.h>
 #include <map>
 
 namespace tinydbpp {
