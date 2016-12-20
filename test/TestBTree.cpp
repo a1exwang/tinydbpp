@@ -273,21 +273,22 @@ BOOST_AUTO_TEST_CASE(deleteBTreeDataDeleteOneChild) {
   BOOST_REQUIRE_THROW(btree.get(3), TBTree::KeyNotFound);
 }
 
-BOOST_AUTO_TEST_CASE(deleteBTreeNodeDecreaseHeight) {
-  TableManager::getInstance()->changeDB("Test");
-  string indexName = "deleteBTreeNodeDecreaseHeight";
-  boost::filesystem::remove("database/Test/" + indexName);
-  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+//BOOST_AUTO_TEST_CASE(deleteBTreeNodeDecreaseHeight) {
+//  TableManager::getInstance()->changeDB("Test");
+//  string indexName = "deleteBTreeNodeDecreaseHeight";
+//  boost::filesystem::remove("database/Test/" + indexName);
+//  BTree<uint32_t, MIN, MAX>::setupBTree(indexName);
+//
+//  BTree<uint32_t, MIN, MAX> btree(indexName);
+//
+//  btree.insert(1, "1");
+//  btree.insert(2, "2");
+//  btree.insert(3, "3");
+//  btree.insert(4, "4");
+//  btree.insert(5, "5");
+//  btree.insert(6, "6");
+//
+//  btree.remove(1);
+//  BOOST_REQUIRE_THROW(btree.get(1), TBTree::KeyNotFound);
+//}
 
-  BTree<uint32_t, MIN, MAX> btree(indexName);
-
-  btree.insert(1, "1");
-  btree.insert(2, "2");
-  btree.insert(3, "3");
-  btree.insert(4, "4");
-  btree.insert(5, "5");
-  btree.insert(6, "6");
-
-  btree.remove(1);
-  BOOST_REQUIRE_THROW(btree.get(1), TBTree::KeyNotFound);
-}

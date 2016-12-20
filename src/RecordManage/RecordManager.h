@@ -17,6 +17,7 @@ namespace tinydbpp {
         int pageNumber;
         int loc;
         Location(int pageNumber, int loc) : pageNumber(pageNumber), loc(loc) {}
+
         std::string toString() const;
         bool operator==(const Location &rhs) const;
         bool operator!=(const Location &rhs) const;
@@ -38,6 +39,7 @@ namespace tinydbpp {
                     std::function<void(std::vector<std::string>&)>&);
         void updateOneRecord(const std::string &table_name, std::vector<std::string> &vec,
                              int pageID, int now);
+        Location updateOneRecord(const std::string &table_name, Location loc, const std::string &res, bool fixed_res);
 
         void del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
                  std::function<void(const std::vector<std::string>&)>&);
