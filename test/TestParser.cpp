@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(createTable) {
     Parser parser(lexer, node);
     ssin << "create database test_database;" << endl;
     ssin << "use database test_database;" << endl;
-    ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null);"<<endl;
+    ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null,  PRIMARY KEY  (id));"<<endl;
 
     BOOST_REQUIRE(parser.parse() == 0);
     BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
@@ -93,5 +93,7 @@ BOOST_AUTO_TEST_CASE(createTable) {
     for(auto & t: td->col_not_null) cout << t << " ";
     cout <<endl;
     for(auto & t: td->col_unique) cout << t << " ";
+    cout <<endl;
+    for(auto & t: td->col_has_index) cout << t << " ";
     cout <<endl;
 }

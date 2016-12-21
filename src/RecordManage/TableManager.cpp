@@ -116,7 +116,6 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
             return false;
         else
             FileUtils::createFile(dbtable_name.c_str());
-    //TODO find index cols and get a map
     this->dbname = db;
     this->dir = this->base_dir + "/" + db;
     table_map.clear();

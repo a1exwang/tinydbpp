@@ -145,7 +145,11 @@ void Statement::exec() {
                 auto p = ptr->getPage(0);
                 char* buf = p->getBuf();
                 char size_str[20];
-                sprintf(size_str, "%d", (int)fl->vec.size());
+                int num = 0;
+                for(auto &f : fl->vec)
+                    if(!f.is_primary_key_stmt)
+                        num++;
+                sprintf(size_str, "%d", num);
                 string tmp = string("    ") + size_str + " ";
                 for(auto &f : fl->vec){
                     if(f.is_primary_key_stmt) continue;
@@ -157,7 +161,8 @@ void Statement::exec() {
 
                     // DONE create index here
                     auto indexName = TableManager::createIndexName(ch[0]->strVal, f.name);
-                    TheBTree::BT::setupBTree(indexName);
+                    if(f.is_key)
+                        TheBTree::BT::setupBTree(indexName);
                 }
                 sprintf(buf, "%s" , tmp.c_str());
                 p->markDirty();
