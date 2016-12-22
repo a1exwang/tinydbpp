@@ -3,16 +3,16 @@
 #include <memory>
 #include <Parser/ParserVal.h>
 #include <functional>
-
+#include <json.hpp>
 namespace tinydbpp {
 namespace ast {
+using json = nlohmann::json;
 
 class Node {
 public:
   std::shared_ptr<ParserVal> ch[3];
   Node():ch{nullptr}{}
   virtual ~Node() {}
-    virtual void exec(){};
 };
 
 class Statement :public Node {
@@ -41,7 +41,7 @@ public:
       DropIdx
   };
 public:
-    virtual void exec();
+    virtual json exec();
   Statement(Type type);
   virtual ~Statement();
   Type getType() const { return type; }
@@ -141,6 +141,9 @@ public:
     void becomeIsNull(const std::string& colname);
     void becomeIsNotNull(const std::string& colname);
     void becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<WhereClause> w2);
+    std::string getNextAssignTableName(); // used in select multiple tables
+    WhereClause afterAssign();// use in generate new whereclause reducing one table
+    std::function<bool(const std::vector<std::string>&)> getChecker();// get checker both select & update & delete
 };
 
 class SetClause : public Node{

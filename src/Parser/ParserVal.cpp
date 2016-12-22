@@ -137,10 +137,11 @@ void ParserVal::makeDeleteTbNode(const ParserVal & ch0, const ParserVal & ch1) {
 
 }
 
-void ParserVal::makeUpdateTbNode(const ParserVal & ch0, const ParserVal & ch1) {
+void ParserVal::makeUpdateTbNode(const ParserVal & ch0, const ParserVal & ch1, const ParserVal & ch2) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::UpdateItem);
     node->ch[0] = std::make_shared<ParserVal>(ch0);
     node->ch[1] = std::make_shared<ParserVal>(ch1);
+    node->ch[2] = std::make_shared<ParserVal>(ch2);
 }
 
 void ParserVal::makeSelectTbNode(const ParserVal & ch0, const ParserVal & ch1, const ParserVal & ch2) {

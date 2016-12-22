@@ -22,7 +22,7 @@ namespace tinydbpp {
              * if pattern[x] > 0, it represents a fixed length of pattern[x] bytes
              * if pattern[x] == -1, it represents a varying length which the first 4 bytes is a int representing length
              */
-            std::vector<int> pattern, col_not_null, col_unique, col_has_index;
+            std::vector<int> pattern, col_not_null, col_unique, col_has_index, col_width;
             std::vector<std::string> col_name, col_type;
             std::string name, path;
             std::shared_ptr<Pager> my_pager;
@@ -71,11 +71,11 @@ namespace tinydbpp {
         void createDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
         bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
+        bool dropTable(std::string name);
         bool DropDB(std::string db);
         static std::string createIndexName(const std::string &tableName, const std::string &colName);
         static bool parseIndex(const std::string &indexName, const std::string &tableName, std::string &colName);
     };
-
 
 }
 

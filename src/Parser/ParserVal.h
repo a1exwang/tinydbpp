@@ -52,7 +52,7 @@ public:
     void makeDescribeTbNode(const ParserVal &);
     void makeInsertTbNode(const ParserVal &, const ParserVal &);
     void makeDeleteTbNode(const ParserVal &,const ParserVal &);
-    void makeUpdateTbNode(const ParserVal &, const ParserVal &);
+    void makeUpdateTbNode(const ParserVal &, const ParserVal &, const ParserVal &);
     void makeSelectTbNode(const ParserVal &, const ParserVal &, const ParserVal &);
     void makeCreateIdxNode(const ParserVal &);
     void makeDropIdxNode(const ParserVal &);

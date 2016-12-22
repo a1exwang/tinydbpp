@@ -88,7 +88,7 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
                 $$.makeDeleteTbNode($3, $5);
            }
            | KW_UPDATE IDENTIFIER KW_SET setClause KW_WHERE whereClause{
-                $$.makeUpdateTbNode($3, $5);
+                $$.makeUpdateTbNode($2, $4, $6);
            }
            | KW_SELECT selector KW_FROM tableList KW_WHERE whereClause{
                 $$.makeSelectTbNode($2, $4, $6);
@@ -187,7 +187,7 @@ whereClause : col op expr {
             }
             | col KW_IS KW_NOT KW_NULL{
                 std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
-                ptr->becomeIsNull($1.strVal);
+                ptr->becomeIsNotNull($1.strVal);
                 $$ = ParserVal(ptr);
             }
             | whereClause KW_AND whereClause{

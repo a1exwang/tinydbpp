@@ -49,6 +49,7 @@ public:
       btree.insert(key, strDataLoc);
     }
   }
+
   void traverse(std::function<bool (KeyT key, std::string &data)> callback) {
     auto root = btree.getRoot();
 
@@ -107,5 +108,5 @@ private:
   BT btree;
 };
 
-typedef BTreePlus<uint32_t, 2, 3> TheBTree;
+typedef BTreePlus<size_t, 2, 3> TheBTree;
 }

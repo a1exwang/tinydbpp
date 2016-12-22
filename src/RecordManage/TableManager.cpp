@@ -87,14 +87,14 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         for(int i = 0;i < num;i++)
         {
             string colName,t;
-            int pat, b1, b2;
-            istr >> colName >> t >> pat >> b1 >> b2;
+            int pat, b1, b2, w;
+            istr >> colName >> t >> pat >> b1 >> b2 >> w;
             new_td->col_name.push_back(colName);
             new_td->col_type.push_back(t);
             new_td->addPattern(pat);
             new_td->col_not_null.push_back(b1);
             new_td->col_unique.push_back(b2);
-
+            new_td->col_width.push_back(w);
             // DONE check has index
             FileUtils fileUtils;
             int hasIndex = fileUtils.isExist((dir + "/" + createIndexName(name, colName)).c_str());
@@ -102,7 +102,8 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         }
         p->releaseBuf(buf);
     };
-    parse_func(ret);
+    if(name.find("_") == string::npos)// not index "table"
+        parse_func(ret);
     table_map.push_back(ret);
     return ret;
 }
@@ -133,7 +134,7 @@ bool TableManager::DropDB(std::string db) {
         dbname = "";
         table_map.clear();
     }
-    return FileUtils::DeleteDir((this->base_dir + "/" + db).c_str());
+    return FileUtils::deleteDir((this->base_dir + "/" + db).c_str());
 }
 
 bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
@@ -160,4 +161,20 @@ bool TableManager::parseIndex(const std::string &indexName, const std::string &t
         return true;
     }
     return false;
+}
+
+bool TableManager::dropTable(std::string name) {
+    for(auto iter = table_map.begin();iter != table_map.end();)
+        if((*iter)->name == name || ((*iter)->name).find(name + "_") != string::npos)
+            table_map.erase(iter++);
+        else iter ++;
+
+    auto files = FileUtils::listFiles(dir.c_str());
+    bool ret = false;
+    for(auto & f : files)
+        if(f == name || f.find(name + "_") != string::npos) {
+            FileUtils::deleteFile((dir + "/" + f).c_str());
+            ret = true;
+        }
+    return ret;
 }

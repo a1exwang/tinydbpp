@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <cmath>
 #include <BTree/BTreePlus.h>
-
+#include <config.h>
 using namespace std;
 using namespace tinydbpp::ast;
 
@@ -54,6 +54,12 @@ void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<Whe
         exprs.push_back(w2->ops[i]);
     }
 }
+
+std::string WhereClause::getNextAssignTableName() {
+
+
+}
+
 /*
  * func = [op, v](const std::vector<std::string>& item, const std::vector<int>& offset,const std::vector<std::string>& types){
         if(v.type == "col"){
@@ -119,24 +125,29 @@ void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<Whe
     };
 
  */
-void Statement::exec() {
+json Statement::exec() {
     if(type == ShowDbs){
         TableManager::getInstance(); // create base dir
         auto file_name_list = FileUtils::listFiles(TableManager::base_dir.c_str());
-        for(auto & str : file_name_list)
-            cout << str << " ";
-        cout <<endl;
+        return json({{"result" , file_name_list}});
     }else if(type == CreateDb){
         TableManager::getInstance()->createDB(ch[0]->strVal);
     }else if(type == DropDb){
         TableManager::getInstance()->DropDB(ch[0]->strVal);
     }else if(type == UseDb){
         if(!TableManager::getInstance()->changeDB(ch[0]->strVal, false))
-            cout << "No such Database."<<endl;
+            return json({{"result", "No such Database."}});
     }else if(type == ShowTables){
         if(TableManager::getInstance()->hasDB()){
-
-        }else cout << "No Database was specified."<<endl;
+            vector<string> ret;
+            auto file_name_list = FileUtils::listFiles(TableManager::getInstance()->dir.c_str());
+            for(auto & str : file_name_list)
+                if(str.find("_") == str.npos && str != SYS_TABLE_NAME)
+                {
+                    ret.push_back(str);
+                }
+            return json({{"result", ret}});
+        }else return json({{"result", "No Database was specified."}});
     }else if(type == CreateTable){
         if(TableManager::getInstance()->hasDB()){
             auto fl = std::dynamic_pointer_cast<FieldList>(ch[1]->getNode());
@@ -153,13 +164,13 @@ void Statement::exec() {
                 string tmp = string("    ") + size_str + " ";
                 for(auto &f : fl->vec){
                     if(f.is_primary_key_stmt) continue;
-                    int k = f.type == "varchar"? -1 : ((f.size + 3) / 4);//bits to
-                    sprintf(size_str, "%d", k);
+                    string pattern = f.type == "varchar"? "-1" : "5"; //bits to bytes +1 is null
+                    sprintf(size_str, "%d", f.size);
                     //can null 0 not null 1
-                    tmp = tmp + f.name + " " + f.type + " " + size_str + " " + ((f.is_key | !f.can_null)? string("1 "):string("0 "))
-                          + (f.is_key? string("1 ") : string("0 ")); // unique
+                    tmp = tmp + f.name + " " + f.type + " " + pattern + " " + ((f.is_key | !f.can_null)? string("1 "):string("0 "))
+                          + (f.is_key? string("1 ") : string("0 ")) + size_str + " "; // unique
 
-                    // DONE create index here
+                    // create index here
                     auto indexName = TableManager::createIndexName(ch[0]->strVal, f.name);
                     if(f.is_key)
                         TheBTree::BT::setupBTree(indexName);
@@ -169,8 +180,74 @@ void Statement::exec() {
                 p->releaseBuf(buf);
             };
             TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme);
-        }else cout << "No Database was specified."<<endl;
+        }else return json({{"result", "No Database was specified."}});
+    }else if(type == DropTable){
+        if(!TableManager::getInstance()->dropTable(ch[0]->strVal))
+            return json({{"result", "There's no this table."}});
+    }else if(type == DesribeTable){
+        auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
+        if(td == nullptr) return json({{"result", "There's no this table."}});
+        return json({{"result", {{"name", td->col_name}, {"type", td->col_type}, {"pattern", td->pattern},
+                     {"not null", td->col_not_null}, {"unique", td->col_unique}, {"has index", td->col_has_index},{"width", td->col_width}} }});
+    }else if(type == InsertItem){
+        auto vlists = dynamic_pointer_cast<ValueLists>(ch[1]->getNode());
+        auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
+        for(auto & vlist : vlists->vec){
+            if(vlist->vec.size() != td->col_name.size()) return json({{"result", "Wrong Dimension."}});
+            vector<string> item;
+            for(int i = 0;i < vlist->vec.size();i++) {
+                string v_str(td->pattern[i] > 0? td->pattern[i] : 1, 0);
+                auto v = vlist->vec[i];
+                if(v->type == "NULL") {
+                    if(td->col_not_null[i] == 1) return json({{"result", td->col_name[i] + "can not be null."}});
+                    *(v_str.end() - 1) = 1;
+                }
+                else if(v->type == "int")
+                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(v->iVal), (char*)(&(v->iVal)+ 4)));
+                else if(v->type == "string")
+                    v_str = v->strVal + "\0";
+                item.push_back(v_str);
+                //TODO special check
+            }
+            // check unique
+            bool duplicated = false;
+            for(int i = 0;i < td->col_name.size();i++)
+                if(item[i].back() != 1)// null can duplicate
+                if(td->col_has_index[i] == 1 && td->col_unique[i] == 1)
+                {
+                    TheBTree index(TableManager::getInstance()->dir + "/" + TableManager::createIndexName(td->name, td->col_name[i]));
+                    auto vec = index.get(hash<string>()(item[i]));
+                    for(auto & pre : vec)
+                        if(pre == item[i]) {
+                            duplicated = true;
+                            break;
+                        }
+                    if(duplicated) break;
+                }
+            if(!duplicated) {
+                bool fixed_res;
+                string rec = td->embed(item, fixed_res);
+                Location loc = RecordManager::getInstance()->insert(td->name, rec, fixed_res);
+                for (int i = 0; i < td->col_name.size(); i++)
+                    if (td->col_has_index[i] == 1) {
+                        TheBTree index(TableManager::getInstance()->dir + "/" +
+                                       TableManager::createIndexName(td->name, td->col_name[i]));
+                        index.insert(std::hash<string>()(item[i]), TheBTree::BT::locationToString(loc), false);
+                    }
+            }
+        }
+    }else if (type == UpdateItem){
+
+    }else if (type == DeleteItem){
+
+    }else if (type == SelectItem){
+
+    }else if (type == CreateIdx){
+        //TODO 123
+    }else if (type == DropIdx){
+
     }
+    return nullptr;
 }
 
 Statement::~Statement() { }
