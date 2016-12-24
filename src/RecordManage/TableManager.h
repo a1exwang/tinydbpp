@@ -40,6 +40,7 @@ namespace tinydbpp {
             bool insertInTable(const Item& item);
             std::vector< Item > selectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
             std::vector< Item > deleteAndCollectItems(const Checker &checker);
+            std::vector< Item > deleteAndCollectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
             void updateItems(Checker &checker,Changer &changer);
             std::vector< Item > selectUseChecker(Checker &checker);
         };

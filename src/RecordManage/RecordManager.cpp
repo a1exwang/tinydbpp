@@ -223,7 +223,7 @@ namespace tinydbpp {
              char * dic = dic_page->getBuf();
              bool fixed = (dic[(pageID - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
              RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
-             if((dic[pageID - 2] & 2) == 1)
+             if(dic[pageID - 2] & 2)
                 dic[pageID -2] ^= 2;
              dic_page->markDirty();
              dic_page->releaseBuf(dic);
@@ -329,7 +329,13 @@ namespace tinydbpp {
         shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
         char * dic = dic_page->getBuf();
         shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
-        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
+        char state = dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1];
+        bool fixed = (state & 1) == 0;
+        if(rand() % 5 == 0){
+            if(state & 2)
+                state ^= 2;
+            p->markDirty();
+        }
         dic_page->releaseBuf(dic);
         this->delOneRecord(table_name, loc.pageNumber, loc.loc, fixed);
     }
@@ -379,6 +385,8 @@ namespace tinydbpp {
         p->releaseBuf(data);
         return parsed_data;
     }
+
+
 
 
 }
