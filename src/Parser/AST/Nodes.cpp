@@ -162,7 +162,7 @@ std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index,
                 if(exprs[i].type == "int"){
                     v_str = string(5, '\0');
                     v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(exprs[i].iVal), (char*)(&(exprs[i].iVal)+ 4)));
-                }else v_str = exprs[i].strVal + "\0";
+                }else v_str = exprs[i].strVal + string(1,0);
                 return table_name;
             }
         }
@@ -324,7 +324,7 @@ json Statement::exec() {
                 else if(v->type == "int")
                     v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(v->iVal), (char*)&(v->iVal) + 4));
                 else if(v->type == "varchar")
-                    v_str = v->strVal + "\0";
+                    v_str = v->strVal + string(1,0);
                 item.push_back(v_str);
                 //TODO special check
             }
