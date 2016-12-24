@@ -71,15 +71,19 @@ BOOST_AUTO_TEST_CASE(createTable) {
     ssin << "create database test_database;" << endl;
     ssin << "use database test_database;" << endl;
     ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null,  PRIMARY KEY  (id));"<<endl;
+    ssin << "create table T2 ( id int(10), p varchar(10), pp int(10) not null,  PRIMARY KEY  (id));"<<endl;
+    ssin << "create table T3 ( id int(10), p3 varchar(10), pp3 int(10) not null,  PRIMARY KEY  (id));"<<endl;
     ssin << "desc T1;"<<endl;
-    ssin << "insert into T1 values (1, 'mamama', 'dfs'),(2, 'fffffffffffffffffff', '23');"<<endl;
-    ssin << "select * from T1 where id = 1;" << endl;
+    ssin << "insert into T1 values (1, '123a', 1),(2, 'fffffffffffffffffff', 222);"<<endl;
+    ssin << "insert into T2 values (1, '123b', 1123),(3, 'bbb', 234);"<<endl;
+    ssin << "insert into T3 values (1, '123b', 1123),(4, 'bbb', 234), (2, 'bbb', 234);"<<endl;
+    ssin << "select * from T1, T2, T3 where T3.id > 1;" << endl;
     BOOST_REQUIRE(parser.parse() == 0);
     BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
     auto stmts = dynamic_pointer_cast<ast::Statements>(node);
     auto ss = stmts->get();
     for (auto &s: ss) {
-        cout << s->exec() << endl;
+        cout << "result: " << s->exec() << endl;
     }
     auto td = TableManager::getInstance()->getTableDescription("T1");
     BOOST_REQUIRE(td != nullptr);

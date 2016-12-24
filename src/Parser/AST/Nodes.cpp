@@ -1,4 +1,5 @@
 
+
 #include "Nodes.h"
 #include <Parser/ParserVal.h>
 #include <cassert>
@@ -28,39 +29,38 @@ void Statements::addStatementToFront(std::shared_ptr<Statement> stmt) {
 Statements::~Statements() { }
 
 void WhereClause::becomeCompare(const std::string &colname, const std::string &op, Value v) {
-    names.push_back(colname);
-    ops.push_back(op);
-    exprs.push_back(v);
+  names.push_back(colname);
+  ops.push_back(op);
+  exprs.push_back(v);
 }
 
 void WhereClause::becomeIsNull(const std::string &colname) {
-    names.push_back(colname);
-    ops.push_back("isnull");
-    exprs.push_back(Value("null"));
+  names.push_back(colname);
+  ops.push_back("isnull");
+  exprs.push_back(Value("NULL"));
 }
 
 void WhereClause::becomeIsNotNull(const std::string &colname) {
-    names.push_back(colname);
-    ops.push_back("isnotnull");
-    exprs.push_back(Value("null"));
+  names.push_back(colname);
+  ops.push_back("isnotnull");
+  exprs.push_back(Value("NULL"));
 }
 
 void WhereClause::becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<WhereClause> w2) {
-    names = w1->names;
-    ops = w1->ops;
-    exprs = w1->exprs;
-    for(size_t i = 0;i < w2->names.size();i++){
-        names.push_back(w2->names[i]);
-        ops.push_back(w2->ops[i]);
-        exprs.push_back(w2->ops[i]);
-    }
+  names = w1->names;
+  ops = w1->ops;
+  exprs = w1->exprs;
+  for(size_t i = 0;i < w2->names.size();i++){
+    names.push_back(w2->names[i]);
+    ops.push_back(w2->ops[i]);
+    exprs.push_back(w2->exprs[i]);
+  }
 }
-
 
 Checker WhereClause::getChecker(std::string table_name) {
     auto td = TableManager::getInstance()->getTableDescription(table_name);
     vector<string> check_ops(td->col_name.size(), "");
-    vector<Value> check_value(td->col_name.size(), Value("null"));
+    vector<Value> check_value(td->col_name.size(), Value("NULL"));
     for(int i = 0;i < names.size();i++)
         {
             string col_name, col2_name;
@@ -387,7 +387,8 @@ json Statement::exec() {
         vector< string > assigned_tables(tables.size(), "");
         where->dfs(ans, tables, vector<Value>(), selector, assigned_tables);
         vector<string> assigned_cols;
-        for(auto & ts : assigned_tables) {
+        for(int k = (int)assigned_tables.size()-1;k >= 0;k --) {
+            auto ts = assigned_tables[k];
             if (scols->isAll)
             {
                 auto td = TableManager::getInstance()->getTableDescription(ts);
@@ -416,6 +417,7 @@ json Statement::exec() {
             }
             ret["result"][assigned_cols[i]] = a;
         }
+        return ret;
 
     }else if (type == CreateIdx){
         if(!TableManager::getInstance()->hasDB())

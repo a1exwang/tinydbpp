@@ -83,7 +83,8 @@ void MainWindow::btnExecClicked() {
       int lineCount = 0;
       for (auto it = cols.begin(); it != cols.end(); ++it) {
         colCount++;
-        for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
+        auto v = it.value();
+        for (auto innerIt = v.begin(); innerIt != v.end(); ++innerIt) {
           lineCount++;
         }
       }
