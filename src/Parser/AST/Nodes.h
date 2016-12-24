@@ -10,7 +10,7 @@
 namespace tinydbpp {
 namespace ast {
 using json = nlohmann::json;
-
+using std::string;
 class Node {
 public:
   std::shared_ptr<ParserVal> ch[3];

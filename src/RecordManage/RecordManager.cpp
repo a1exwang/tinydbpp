@@ -173,33 +173,6 @@ namespace tinydbpp {
         return;
     }
 
-    void RecordManager::updateOneRecord(const std::string &table_name, std::vector<std::string> &vec,
-                                        int pageID, int now) {
-        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
-        BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");
-        shared_ptr<Pager> ptr = td->getPager();
-        std::function<void(std::vector<std::string>&, int, int)> update_func = [&td, &table_name, &ptr](std::vector<std::string>& vec, int pageID, int now){
-            bool fixed_res;
-            string res = td->embed(vec, fixed_res);
-            shared_ptr<Page> dic_page = ptr->getPage(((pageID - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
-            char * dic = dic_page->getBuf();
-            bool fixed = (dic[(pageID - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
-            dic_page->releaseBuf(dic);
-            if(fixed && fixed_res){
-                shared_ptr<Page> p = ptr->getPage(pageID);
-                char * data = p->getBuf();
-                memcpy(data + now + 1, res.c_str(), res.length());
-                p->markDirty();
-                p->releaseBuf(data);
-            }else {
-                RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
-                RecordManager::getInstance()->insert(table_name, res, fixed_res);
-            }
-            return;
-        };
-        update_func(vec, pageID, now);
-        return ;
-    }
     Location RecordManager::updateOneRecord(const std::string &table_name, Location loc, const string &res, bool fixed_res) {
       shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
       BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");

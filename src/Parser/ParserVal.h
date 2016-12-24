@@ -54,8 +54,8 @@ public:
     void makeDeleteTbNode(const ParserVal &,const ParserVal &);
     void makeUpdateTbNode(const ParserVal &, const ParserVal &, const ParserVal &);
     void makeSelectTbNode(const ParserVal &, const ParserVal &, const ParserVal &);
-    void makeCreateIdxNode(const ParserVal &);
-    void makeDropIdxNode(const ParserVal &);
+    void makeCreateIdxNode(const ParserVal &,const ParserVal &);
+    void makeDropIdxNode(const ParserVal &,const ParserVal &);
   std::string toString() const;
 
   Type type = Unknown;

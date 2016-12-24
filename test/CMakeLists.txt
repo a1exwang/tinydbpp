@@ -6,10 +6,10 @@ add_executable(TestPager TestPager.cpp)
 target_link_libraries(TestPager TestUtils Pager Page)
 #
 add_executable(TestTableManager TestTableManager.cpp)
-target_link_libraries(TestTableManager TableManager Pager Page)
+target_link_libraries(TestTableManager TableManager RecordManager Pager Page)
 
-add_executable(TestRecordManager TestRecordManager.cpp)
-target_link_libraries(TestRecordManager RecordManager TableManager Pager Page FileUtils TestUtils)
+#add_executable(TestRecordManager TestRecordManager.cpp)
+#target_link_libraries(TestRecordManager RecordManager TableManager Pager Page FileUtils TestUtils)
 
 add_executable(TestLexer TestLexer.cpp)
 target_link_libraries(TestLexer SQLParser TestUtils)
