@@ -253,10 +253,15 @@ json Statement::exec() {
         return json({{"result" , file_name_list}});
     }else if(type == CreateDb){
         TableManager::getInstance()->createDB(ch[0]->strVal);
+        return json({{"result", "Succeed."}});
     }else if(type == DropDb){
-        TableManager::getInstance()->DropDB(ch[0]->strVal);
+        if(TableManager::getInstance()->DropDB(ch[0]->strVal))
+            return json({{"result", "Succeed."}});
+        else return json({{"result", "No such Database."}});
     }else if(type == UseDb){
-        if(!TableManager::getInstance()->changeDB(ch[0]->strVal, false))
+        if(TableManager::getInstance()->changeDB(ch[0]->strVal, false))
+            return json({{"result", "Succeed."}});
+        else
             return json({{"result", "No such Database."}});
     }else if(type == ShowTables){
         if(TableManager::getInstance()->hasDB()){
@@ -300,17 +305,23 @@ json Statement::exec() {
                 p->markDirty();
                 p->releaseBuf(buf);
             };
-            TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme);
+            if(TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme))
+                return json({{"result", "Succeed."}});
+            else return json({{"result", "Create table failed."}});
         }else return json({{"result", "No Database was specified."}});
     }else if(type == DropTable){
         if(!TableManager::getInstance()->dropTable(ch[0]->strVal))
             return json({{"result", "There's no this table."}});
     }else if(type == DesribeTable){
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
         auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
         if(td == nullptr) return json({{"result", "There's no this table."}});
         return json({{"result", {{"name", td->col_name}, {"type", td->col_type}, {"pattern", td->pattern},
                      {"not null", td->col_not_null}, {"unique", td->col_unique}, {"has index", td->col_has_index},{"width", td->col_width}} }});
     }else if(type == InsertItem){
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
         auto vlists = dynamic_pointer_cast<ValueLists>(ch[1]->getNode());
         auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
         for(auto & vlist : vlists->vec){
@@ -328,9 +339,13 @@ json Statement::exec() {
                 item.push_back(v_str);
                 //TODO special check
             }
-            td->insertInTable(item);
+            if(td->insertInTable(item))
+                return json({{"result", "Succeed."}});
+            else return json({{"result", "Insert failed."}});
         }
     }else if (type == UpdateItem){
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
         vector<string> tables({ch[0]->strVal});
         bool can_index;
         int col_offset;
@@ -344,7 +359,10 @@ json Statement::exec() {
 //          TODO index optimize
 //        }else
         td->updateItems(checker, changer);
+        return json({{"result", "Finished."}});
     }else if (type == DeleteItem){
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
         vector<string> tables({ch[0]->strVal});
         bool can_index;
         int col_offset;
@@ -357,14 +375,17 @@ json Statement::exec() {
 //          TODO index optimize
 //        }else
         td->deleteAndCollectItems(checker);
+        return json({{"result", "Finished."}});
     }else if (type == SelectItem){
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
         vector<string> tables  = dynamic_pointer_cast<TableList>(ch[1]->getNode())->tables;
         auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
         auto scols = dynamic_pointer_cast<SelectCols>(ch[0]->getNode());
         auto selector = scols->getSelector(tables);
         vector< vector<Value> > ans;
         vector< string > assigned_tables(tables.size(), "");
-        where->dfs(ans,tables,vector<Value>(),selector, assigned_tables);
+        where->dfs(ans, tables, vector<Value>(), selector, assigned_tables);
         vector<string> assigned_cols;
         for(auto & ts : assigned_tables) {
             if (scols->isAll)
@@ -397,9 +418,11 @@ json Statement::exec() {
         }
 
     }else if (type == CreateIdx){
-        //TODO 123
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
     }else if (type == DropIdx){
-
+        if(!TableManager::getInstance()->hasDB())
+            return json({{"result", "No Database was specified."}});
     }
     return nullptr;
 }
