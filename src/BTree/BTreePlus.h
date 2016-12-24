@@ -17,15 +17,20 @@ public:
   BTreePlus(const std::string tableName) :btree(tableName) { }
 
   std::vector<std::string> get(KeyT key) {
-    std::string ptrs = btree.get(key);
-    BOOST_ASSERT(ptrs.size() % LocLength == 0);
-    int count = ptrs.size() / LocLength;
-    std::vector<std::string> result;
-    for (int i = 0; i < count; ++i) {
-      Location loc = btree.stringToLocation(ptrs.substr(i * LocLength, LocLength));
-      result.push_back(RecordManager::getInstance()->getRecord(btree.getTableName(), loc));
+    try {
+      std::string ptrs = btree.get(key);
+      BOOST_ASSERT(ptrs.size() % LocLength == 0);
+      int count = ptrs.size() / LocLength;
+      std::vector<std::string> result;
+      for (int i = 0; i < count; ++i) {
+        Location loc = btree.stringToLocation(ptrs.substr(i * LocLength, LocLength));
+        result.push_back(RecordManager::getInstance()->getRecord(btree.getTableName(), loc));
+      }
+      return result;
     }
-    return result;
+    catch (typename BT::KeyNotFound e) {
+      return std::vector<std::string>();
+    }
   }
 
   void insert(KeyT key, const std::string &data, bool fixed) {

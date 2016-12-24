@@ -6,6 +6,7 @@
 #include <json.hpp>
 #include <boost/assert.hpp>
 #include <RecordManage/TableManager.h>
+#include <string>
 
 namespace tinydbpp {
 namespace ast {

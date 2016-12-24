@@ -73,15 +73,16 @@ BOOST_AUTO_TEST_CASE(createTable) {
     ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null,  PRIMARY KEY  (id));"<<endl;
     ssin << "desc T1;"<<endl;
     ssin << "insert into T1 values (1, 'mamama', 'dfs'),(2, 'fffffffffffffffffff', '23');"<<endl;
+    ssin << "select * from T1 where id = 1;" << endl;
     BOOST_REQUIRE(parser.parse() == 0);
     BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
     auto stmts = dynamic_pointer_cast<ast::Statements>(node);
     auto ss = stmts->get();
     for (auto &s: ss) {
-        s->exec();
+        cout << s->exec() << endl;
     }
     auto td = TableManager::getInstance()->getTableDescription("T1");
     BOOST_REQUIRE(td != nullptr);
     BOOST_REQUIRE(td->pattern.size() == 3);
-
 }
+
