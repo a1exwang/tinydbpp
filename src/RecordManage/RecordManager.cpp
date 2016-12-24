@@ -374,7 +374,7 @@ namespace tinydbpp {
         bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
         dic_page->releaseBuf(dic);
         char * data = p->getBuf();
-        int now = loc.loc + fixed? 1 : 3;
+        int now = loc.loc + (fixed? 1 : 3);
         vector<string> parsed_data = td->read(data, PAGER_PAGE_SIZE, now, fixed);
         p->releaseBuf(data);
         return parsed_data;

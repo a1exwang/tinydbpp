@@ -100,7 +100,9 @@ Checker WhereClause::getChecker(std::string table_name) {
                 if(check_value[i].type == "col")
                     b = *(int *)item[check_value[i].iVal].c_str(), b_null = item[check_value[i].iVal].back();
                 if(check_ops[i] == "isnull")
-                    if(a_null != 1) return false;
+                    {
+                        if(a_null != 1) return false;
+                    }
                 else {
                     if(a_null == 1 || b_null == 1) return false;
                     if(check_ops[i] == "=" && !(a == b)) return false;
@@ -118,8 +120,10 @@ Checker WhereClause::getChecker(std::string table_name) {
                 if(check_value[i].type == "col")
                     b = string(item[check_value[i].iVal].begin(), item[check_value[i].iVal].end() - 1), b_null = item[check_value[i].iVal].back();
                 if(check_ops[i] == "isnull")
+                {
                     if(a_null != 1) return false;
-                    else {
+                }
+                else {
                         if (a_null == 1 || b_null == 1) return false;
                         if (check_ops[i] == "=" && !(a == b)) return false;
                         if (check_ops[i] == "<" && !(a < b)) return false;
@@ -127,7 +131,7 @@ Checker WhereClause::getChecker(std::string table_name) {
                         if (check_ops[i] == "<>" && !(a != b)) return false;
                         if (check_ops[i] == "<=" && !(a <= b)) return false;
                         if (check_ops[i] == ">=" && !(a >= b)) return false;
-                    }
+                }
             }
         }
         return true;

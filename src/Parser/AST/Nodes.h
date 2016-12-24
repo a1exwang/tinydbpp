@@ -138,7 +138,8 @@ public:
             return v_str;
         }else if(type == "varchar"){
             return strVal + std::string(1, '\0');
-        }
+        }else BOOST_ASSERT(0);
+        return "";
     }
     //col int string
 };
