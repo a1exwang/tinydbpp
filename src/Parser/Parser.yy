@@ -92,6 +92,7 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
            }
            | KW_SELECT selector KW_FROM tableList KW_WHERE whereClause{
                 $$.makeSelectTbNode($2, $4, $6);
+                cout << "select " << dynamic_pointer_cast<ast::SelectCols>($2.getNode())->isAll << endl;
            }
 
 idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
@@ -228,7 +229,9 @@ expr : value{$$ = $1;} | col{
             }
             |  colList{
                 std::shared_ptr<ast::SelectCols> ptr(new ast::SelectCols());
-                ptr->setColList(std::dynamic_pointer_cast<ast::ColList>($1.getNode()) );
+                auto ptr1 = std::dynamic_pointer_cast<ast::ColList>($1.getNode());
+                BOOST_ASSERT(ptr1 != nullptr);
+                ptr->setColList(ptr1);
                 $$ = ParserVal(ptr);
             }
 

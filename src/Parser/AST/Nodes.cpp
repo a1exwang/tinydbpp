@@ -322,7 +322,7 @@ json Statement::exec() {
                 if(v->type == "NULL")
                     *(v_str.end() - 1) = 1;
                 else if(v->type == "int")
-                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(v->iVal), (char*)(&(v->iVal)+ 4)));
+                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(v->iVal), (char*)&(v->iVal) + 4));
                 else if(v->type == "varchar")
                     v_str = v->strVal + "\0";
                 item.push_back(v_str);
