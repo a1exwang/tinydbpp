@@ -10,7 +10,7 @@ namespace tinydbpp {
  *              copy constructor, assignment operator, < operator
  *
  */
-template<typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
+template<typename KeyT, size_t BRankMin, size_t BRankMax>
 class BTreePlus {
 public:
   typedef BTree<KeyT, BRankMin, BRankMax> BT;
@@ -49,6 +49,7 @@ public:
       btree.insert(key, strDataLoc);
     }
   }
+
   void traverse(std::function<bool (KeyT key, std::string &data)> callback) {
     auto root = btree.getRoot();
 
@@ -107,5 +108,4 @@ private:
   BT btree;
 };
 
-typedef BTreePlus<uint32_t, 2, 3> TheBTree;
 }

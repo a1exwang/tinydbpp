@@ -5,6 +5,9 @@
 #include <TableManager.h>
 #include <iostream>
 #include <sstream>
+#include <BTree/TheBTree.h>
+#include <BTree/BTreePlus.h>
+
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
@@ -16,8 +19,8 @@ shared_ptr<Pager> TableDescription::getPager(Pager::OpenFlag flag ){
     else return my_pager;
 }
 
-std::vector<std::string> TableDescription::read(char* buf, int len, int& now, bool fixed){
-    auto ret = std::vector<std::string>();
+Item TableDescription::read(char* buf, int len, int& now, bool fixed){
+    Item ret;
     int minimum = now + this->len;
     for(int x : pattern){
         if(x > 0){
@@ -43,7 +46,7 @@ void TableDescription::addPattern(int x){
     if(x == -1) len += 4 + DEFAULT_VARCHAR_LEN;
     else len += x;
 }
-std::string TableDescription::embed(const std::vector<std::string> list, bool & fixed_res){
+std::string TableDescription::embed(const Item& list, bool & fixed_res){
     std::string ret;
     fixed_res = true;
     for(uint32_t i = 0;i < list.size();i++){
@@ -62,7 +65,87 @@ std::string TableDescription::embed(const std::vector<std::string> list, bool & 
     return ret;
 }
 
+bool TableDescription::insertInTable(const Item &item) {
+    for(int i = 0;i < col_name.size();i++)
+    {
+        if(col_not_null[i] == 1 && item[i].back() == 1) return false;
+        if(col_unique[i] == 1 && item[i].back() != 1 && col_has_index[i] == 1){
+            auto res = selectUseIndex(i, item[i]);
+            if(res.size() > 0) return false;
+        }
+    }
+    bool fixed_res;
+    string rec = embed(item, fixed_res);
+    Location loc = RecordManager::getInstance()->insert(name, rec, fixed_res);
+    for (int i = 0; i < col_name.size(); i++)
+        if (col_has_index[i] == 1) {
+            auto index = getIndex(i);
+            index->insert(std::hash<string>()(item[i]), TheBTree::BT::locationToString(loc), false);
+        }
+    return true;
+}
 
+std::vector< Item > TableDescription::selectUseIndex(int offset, std::string v, const Checker &checker)
+{
+    std::vector< Item > ret;
+    auto index = getIndex(offset);
+    auto vec = index->get(hash<string>()(v));
+    for(string & loc : vec) {
+        vector<string> item = RecordManager::getInstance()->getEmbedRecord(name, TheBTree::BT::stringToLocation(loc));
+        if (v == item[offset] && (checker == nullptr || checker(item)) )
+            ret.push_back(item);
+    }
+    return ret;
+}
+
+
+int TableDescription::getOffset(const std::string & str) {
+    for(int i = 0;i < col_name.size();i++)
+        if(str == col_name[i])
+            return i;
+    return -1;
+}
+
+std::shared_ptr<TheBTree> TableDescription::getIndex(int offset) {
+    return make_shared<TheBTree>(TableManager::getInstance()->dir + "/"
+                                 +TableManager::createIndexName(name, col_name[offset]));
+}
+
+void TableDescription::updateItems(Checker &checker, Changer &changer) {
+    auto pre = deleteAndCollectItems(checker);
+    for(auto & item : pre) {
+        changer(item);
+        insertInTable(item);
+    }
+}
+
+std::vector<Item > TableDescription::deleteAndCollectItems(const Checker & checker) {
+    auto td = this;
+    vector<Item > ret;
+    std::function<void(const Item&, Location)> solver = [td, &ret](const Item& item, Location loc){
+        ret.push_back(item);
+        string loc_data = TheBTree::BT::locationToString(loc);
+        for(int i = 0;i < td->col_has_index.size();i++)
+            if(td->col_has_index[i] == 1){
+                auto index = td->getIndex(i);
+                index->remove(hash<string>()(item[i]), [&loc_data](const std::string & s){
+                    return s == loc_data;
+                }, false);
+            }
+    };
+    RecordManager::getInstance()->del(name, checker, solver);
+    return ret;
+}
+
+std::vector< Item > TableDescription::selectUseChecker(Checker &checker)
+{
+    vector<Item > ret;
+    std::function<void( Item&, int, int)> solver = [&ret]( Item& item, int, int){
+        ret.push_back(item);
+    };
+    RecordManager::getInstance()->select(name,checker,solver);
+    return ret;
+}
 
 std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string name) {
     for(auto ptr : table_map)
@@ -87,14 +170,14 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         for(int i = 0;i < num;i++)
         {
             string colName,t;
-            int pat, b1, b2;
-            istr >> colName >> t >> pat >> b1 >> b2;
+            int pat, b1, b2, w;
+            istr >> colName >> t >> pat >> b1 >> b2 >> w;
             new_td->col_name.push_back(colName);
             new_td->col_type.push_back(t);
             new_td->addPattern(pat);
             new_td->col_not_null.push_back(b1);
             new_td->col_unique.push_back(b2);
-
+            new_td->col_width.push_back(w);
             // DONE check has index
             FileUtils fileUtils;
             int hasIndex = fileUtils.isExist((dir + "/" + createIndexName(name, colName)).c_str());
@@ -102,7 +185,8 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         }
         p->releaseBuf(buf);
     };
-    parse_func(ret);
+    if(name.find("_") == string::npos)// not index "table"
+        parse_func(ret);
     table_map.push_back(ret);
     return ret;
 }
@@ -133,7 +217,7 @@ bool TableManager::DropDB(std::string db) {
         dbname = "";
         table_map.clear();
     }
-    return FileUtils::DeleteDir((this->base_dir + "/" + db).c_str());
+    return FileUtils::deleteDir((this->base_dir + "/" + db).c_str());
 }
 
 bool TableManager::buildTable(std::string name, std::function<void(Pager *)> callback) {
@@ -160,4 +244,20 @@ bool TableManager::parseIndex(const std::string &indexName, const std::string &t
         return true;
     }
     return false;
+}
+
+bool TableManager::dropTable(std::string name) {
+    for(auto iter = table_map.begin();iter != table_map.end();)
+        if((*iter)->name == name || ((*iter)->name).find(name + "_") != string::npos)
+            table_map.erase(iter++);
+        else iter ++;
+
+    auto files = FileUtils::listFiles(dir.c_str());
+    bool ret = false;
+    for(auto & f : files)
+        if(f == name || f.find(name + "_") != string::npos) {
+            FileUtils::deleteFile((dir + "/" + f).c_str());
+            ret = true;
+        }
+    return ret;
 }

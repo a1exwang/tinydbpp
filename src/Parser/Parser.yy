@@ -88,17 +88,17 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
                 $$.makeDeleteTbNode($3, $5);
            }
            | KW_UPDATE IDENTIFIER KW_SET setClause KW_WHERE whereClause{
-                $$.makeUpdateTbNode($3, $5);
+                $$.makeUpdateTbNode($2, $4, $6);
            }
            | KW_SELECT selector KW_FROM tableList KW_WHERE whereClause{
                 $$.makeSelectTbNode($2, $4, $6);
            }
 
 idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
-                $$.makeCreateIdxNode($5);
+                $$.makeCreateIdxNode($3, $5);
             }
             | KW_DROP KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
-                $$.makeDropIdxNode($5);
+                $$.makeDropIdxNode($3, $5);
             }
 
 fieldList:  field {
@@ -166,7 +166,7 @@ value : INT{
         $$ = ParserVal(ptr);
     }
     | STRING{
-        std::shared_ptr<ast::Value> ptr(new ast::Value("string"));
+        std::shared_ptr<ast::Value> ptr(new ast::Value("varchar"));
         ptr->strVal = $1.strVal;
         $$ = ParserVal(ptr);
     }
@@ -187,7 +187,7 @@ whereClause : col op expr {
             }
             | col KW_IS KW_NOT KW_NULL{
                 std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
-                ptr->becomeIsNull($1.strVal);
+                ptr->becomeIsNotNull($1.strVal);
                 $$ = ParserVal(ptr);
             }
             | whereClause KW_AND whereClause{
@@ -196,7 +196,7 @@ whereClause : col op expr {
                 $$ = ParserVal(ptr);
             } 
 col : IDENTIFIER '.' IDENTIFIER{
-        $$.strVal = $1.strVal + "." + $3.strVal;
+        $$.strVal = $1.strVal + "_" + $3.strVal;
     }
     | IDENTIFIER{
         $$.strVal = $1.strVal;
@@ -222,12 +222,12 @@ expr : value{$$ = $1;} | col{
         }
 
  selector   : '*'{ 
-                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                std::shared_ptr<ast::SelectCols> ptr(new ast::SelectCols());
                 ptr->setAll();
                 $$ = ParserVal(ptr);
             }
             |  colList{
-                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                std::shared_ptr<ast::SelectCols> ptr(new ast::SelectCols());
                 ptr->setColList(std::dynamic_pointer_cast<ast::ColList>($1.getNode()) );
                 $$ = ParserVal(ptr);
             }

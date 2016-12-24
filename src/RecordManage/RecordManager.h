@@ -35,18 +35,19 @@ namespace tinydbpp {
         Location insert(const std::string &table_name, const std::string &record, bool);
         Location* tryInsert(std::shared_ptr<Page>, const std::string &record, bool fixed);
         void update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
-                    std::function<void(std::vector<std::string>&)>&);
+                    std::function<void(std::vector<std::string>&)>&, std::function<void(Location, Location)>& callback);
         void updateOneRecord(const std::string &table_name, std::vector<std::string> &vec,
                              int pageID, int now);
         Location updateOneRecord(const std::string &table_name, Location loc, const std::string &res, bool fixed_res);
 
-        void del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
-                 std::function<void(const std::vector<std::string>&)>&);
+        void del(const std::string &table_name, const Checker &c,
+                 std::function<void(const std::vector<std::string>&, Location)>&);
         void delOneRecord(const std::string &table_name, int pageID, int now, bool fixed);
 
-        void select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
+        void select(const std::string &table_name, const Checker &c,
                     std::function<void(std::vector<std::string>&, int, int)>&);
         std::string getRecord(const std::string &table_name, Location loc) const;
+        std::vector<std::string> getEmbedRecord(const std::string& table_name, Location loc) const;
         void deleteRecord(const std::string &table_name, Location loc);
         void updateRecordNoResize(const std::string &table_name, Location loc, std::function<bool (std::string &record)> callback) const;
     };

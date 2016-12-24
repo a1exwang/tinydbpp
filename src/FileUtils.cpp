@@ -100,9 +100,17 @@ std::vector<std::string> FileUtils::listFiles(const char *dir) {
     return ret;
 }
 
-bool FileUtils::DeleteDir(const char *dir){
+bool FileUtils::deleteDir(const char *dir){
     if(exists(path(dir))){
         remove_all(path(dir));
+        return true;
+    }
+    return false;
+}
+
+bool FileUtils::deleteFile(const char *dir) {
+    if(exists(path(dir))) {
+        remove(dir);
         return true;
     }
     return false;

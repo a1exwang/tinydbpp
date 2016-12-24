@@ -140,13 +140,15 @@ namespace tinydbpp {
         return ret;
     }
     void RecordManager::update(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
-                std::function<void(std::vector<std::string>&)>& solver){
+                std::function<void(std::vector<std::string>&)>& solver, std::function<void(Location, Location)>& callback){
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         BOOST_ASSERT_MSG(td != nullptr, "RecordManager::update(), maybe you type the wrong db name.");
         shared_ptr<Pager> ptr = td->getPager();
-        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &td, &table_name, &ptr](std::vector<std::string>& vec, int pageID, int now){
+        std::function<void(std::vector<std::string>&, int, int)> update_func = [&solver, &td, &table_name, &ptr, &callback](std::vector<std::string>& vec, int pageID, int now){
             solver(vec);
+            Location oldLoc(pageID, now);
+            Location newLoc(0, 0);
             bool fixed_res;
             string res = td->embed(vec, fixed_res);
             shared_ptr<Page> dic_page = ptr->getPage(((pageID - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
@@ -159,10 +161,12 @@ namespace tinydbpp {
                 memcpy(data + now + 1, res.c_str(), res.length());
                 p->markDirty();
                 p->releaseBuf(data);
+                newLoc = oldLoc;
             }else {
                 RecordManager::getInstance()->delOneRecord(table_name, pageID, now, fixed);
-                RecordManager::getInstance()->insert(table_name, res, fixed_res);
+                newLoc = RecordManager::getInstance()->insert(table_name, res, fixed_res);
             }
+            callback(oldLoc, newLoc);
             return;
         };
         select(table_name, checker, update_func);
@@ -234,14 +238,14 @@ namespace tinydbpp {
         p->releaseBuf(data);
     }
 
-    void RecordManager::del(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
-             std::function<void(const std::vector<std::string>&)>& solver){
+    void RecordManager::del(const std::string &table_name,const Checker &checker,
+             std::function<void(const std::vector<std::string>&, Location)>& solver){
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
         shared_ptr<Pager> ptr = td->getPager();
         std::function<void(std::vector<std::string>&, int, int)> del_func = [&solver, &table_name, &ptr](std::vector<std::string>& vec, int pageID, int now){
              if (solver)
-               solver(vec);
+               solver(vec, Location(pageID, now));
              shared_ptr<Page> dic_page = ptr->getPage(((pageID - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1); // find it's dictionary page
              char * dic = dic_page->getBuf();
              bool fixed = (dic[(pageID - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
@@ -283,7 +287,7 @@ namespace tinydbpp {
      * @param checker: Required, check if the record should be selected.
      * @param solver: Optional, solver is called for each selected records.
      */
-    void RecordManager::select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::select(const std::string &table_name, const Checker &checker,
              std::function<void(std::vector<std::string>&, int, int)> & solver) {
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
@@ -387,6 +391,22 @@ namespace tinydbpp {
         }
         p->releaseBuf(data);
     }
+
+    std::vector<std::string> RecordManager::getEmbedRecord(const std::string &table_name, Location loc) const {
+        shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
+        shared_ptr<Pager> ptr = td->getPager();
+        shared_ptr<Page> dic_page = ptr->getPage(((loc.pageNumber - 1) / PAGER_PAGE_SIZE) * PAGER_PAGE_SIZE + 1);
+        char * dic = dic_page->getBuf();
+        shared_ptr<Page> p = ptr->getPage((unsigned)loc.pageNumber);
+        bool fixed = (dic[(loc.pageNumber - 1) % PAGER_PAGE_SIZE - 1] & 1) == 0;
+        dic_page->releaseBuf(dic);
+        char * data = p->getBuf();
+        int now = loc.loc + fixed? 1 : 3;
+        vector<string> parsed_data = td->read(data, PAGER_PAGE_SIZE, now, fixed);
+        p->releaseBuf(data);
+        return parsed_data;
+    }
+
 
 }
 

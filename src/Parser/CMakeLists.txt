@@ -12,5 +12,5 @@ add_library(ParsingError ParsingError.cpp)
 add_library(AST AST/Nodes.cpp ParserVal.cpp)
 add_library(SQLParser ${BISON_Parser_OUTPUTS} ${FLEX_Lexer_OUTPUTS})
 
-target_link_libraries(AST TableManager Pager)
+target_link_libraries(AST TableManager Pager RecordManager)
 target_link_libraries(SQLParser AST ParsingError)

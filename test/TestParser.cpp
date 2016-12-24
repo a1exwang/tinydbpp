@@ -49,11 +49,10 @@ BOOST_AUTO_TEST_CASE(showDatabases) {
   ssin << "show tables;" << endl;
 
   BOOST_REQUIRE(parser.parse() == 0);
-  BOOST_REQUIRE(dynamic_cast<ast::Statements*>(node.get()));
   auto stmts = dynamic_pointer_cast<ast::Statements>(node);
   auto ss = stmts->get();
     for(auto & s: ss){
-        s->exec();
+        cout << s->exec()<<endl;
     }
 //  BOOST_REQUIRE(ss[0]->getType() == ast::Statement::Type::ShowDbs);
 //  BOOST_REQUIRE(ss[1]->getType() == ast::Statement::Type::CreateDb);
@@ -72,7 +71,8 @@ BOOST_AUTO_TEST_CASE(createTable) {
     ssin << "create database test_database;" << endl;
     ssin << "use database test_database;" << endl;
     ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null,  PRIMARY KEY  (id));"<<endl;
-
+    ssin << "desc T1;"<<endl;
+    ssin << "insert into T1 values (1, 'mamama', 'dfs'),(2, 'fffffffffffffffffff', '23');"<<endl;
     BOOST_REQUIRE(parser.parse() == 0);
     BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
     auto stmts = dynamic_pointer_cast<ast::Statements>(node);
@@ -82,18 +82,6 @@ BOOST_AUTO_TEST_CASE(createTable) {
     }
     auto td = TableManager::getInstance()->getTableDescription("T1");
     BOOST_REQUIRE(td != nullptr);
-    cout << td->pattern.size()<<endl;
     BOOST_REQUIRE(td->pattern.size() == 3);
-    for(auto & t: td->col_name) cout << t << " ";
-    cout <<endl;
-    for(auto & t: td->col_type) cout << t << " ";
-    cout <<endl;
-    for(auto & t: td->pattern) cout << t << " ";
-    cout <<endl;
-    for(auto & t: td->col_not_null) cout << t << " ";
-    cout <<endl;
-    for(auto & t: td->col_unique) cout << t << " ";
-    cout <<endl;
-    for(auto & t: td->col_has_index) cout << t << " ";
-    cout <<endl;
+
 }

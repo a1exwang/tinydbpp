@@ -13,16 +13,19 @@
 #include <iostream>
 #include <FileUtils.h>
 #include <Pager/Page.h>
-
+#include <functional>
+#include <BTree/TheBTree.h>
 namespace tinydbpp {
-
+        typedef std::vector< std::string> Item;
+        typedef std::function<bool(const Item &)> Checker;
+        typedef std::function<void(Item &)> Changer;
         struct TableDescription {
             int len;
             /*
              * if pattern[x] > 0, it represents a fixed length of pattern[x] bytes
              * if pattern[x] == -1, it represents a varying length which the first 4 bytes is a int representing length
              */
-            std::vector<int> pattern, col_not_null, col_unique, col_has_index;
+            std::vector<int> pattern, col_not_null, col_unique, col_has_index, col_width;
             std::vector<std::string> col_name, col_type;
             std::string name, path;
             std::shared_ptr<Pager> my_pager;
@@ -30,9 +33,16 @@ namespace tinydbpp {
             std::string getPath(){return path;}
             void addPattern(int x);
             std::shared_ptr<Pager> getPager(Pager::OpenFlag flag = Pager::ReadWrite);
-            std::vector<std::string> read(char* buf, int len, int& now, bool fixed);
-            std::string embed(const std::vector<std::string> list, bool & fixed_res);
-    };
+            Item read(char* buf, int len, int& now, bool fixed);
+            std::string embed(const Item & list, bool & fixed_res);
+            std::shared_ptr<TheBTree> getIndex(int offset);
+            int getOffset(const std::string&);
+            bool insertInTable(const Item& item);
+            std::vector< Item > selectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
+            std::vector< Item > deleteAndCollectItems(const Checker &checker);
+            void updateItems(Checker &checker,Changer &changer);
+            std::vector< Item > selectUseChecker(Checker &checker);
+        };
 
     class TableManager {
         static TableManager *ins;
@@ -71,11 +81,11 @@ namespace tinydbpp {
         void createDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
         bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
+        bool dropTable(std::string name);
         bool DropDB(std::string db);
         static std::string createIndexName(const std::string &tableName, const std::string &colName);
         static bool parseIndex(const std::string &indexName, const std::string &tableName, std::string &colName);
     };
-
 
 }
 
