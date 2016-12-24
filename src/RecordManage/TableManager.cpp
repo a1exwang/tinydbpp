@@ -33,6 +33,7 @@ Item TableDescription::read(char* buf, int len, int& now, bool fixed){
             now += 4;
             BOOST_ASSERT(now + next_len <= len);
             ret.push_back(std::string(buf + now, buf + now + next_len));
+            now += next_len;
         }else
             BOOST_ASSERT(0);
     }
