@@ -166,7 +166,7 @@ value : INT{
         $$ = ParserVal(ptr);
     }
     | STRING{
-        std::shared_ptr<ast::Value> ptr(new ast::Value("string"));
+        std::shared_ptr<ast::Value> ptr(new ast::Value("varchar"));
         ptr->strVal = $1.strVal;
         $$ = ParserVal(ptr);
     }
@@ -196,7 +196,7 @@ whereClause : col op expr {
                 $$ = ParserVal(ptr);
             } 
 col : IDENTIFIER '.' IDENTIFIER{
-        $$.strVal = $1.strVal + "." + $3.strVal;
+        $$.strVal = $1.strVal + "_" + $3.strVal;
     }
     | IDENTIFIER{
         $$.strVal = $1.strVal;
@@ -222,12 +222,12 @@ expr : value{$$ = $1;} | col{
         }
 
  selector   : '*'{ 
-                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                std::shared_ptr<ast::SelectCols> ptr(new ast::SelectCols());
                 ptr->setAll();
                 $$ = ParserVal(ptr);
             }
             |  colList{
-                std::shared_ptr<ast::Selector> ptr(new ast::Selector());
+                std::shared_ptr<ast::SelectCols> ptr(new ast::SelectCols());
                 ptr->setColList(std::dynamic_pointer_cast<ast::ColList>($1.getNode()) );
                 $$ = ParserVal(ptr);
             }
