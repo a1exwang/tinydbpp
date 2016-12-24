@@ -10,7 +10,7 @@ namespace tinydbpp {
  *              copy constructor, assignment operator, < operator
  *
  */
-template<typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
+template<typename KeyT, size_t BRankMin, size_t BRankMax>
 class BTreePlus {
 public:
   typedef BTree<KeyT, BRankMin, BRankMax> BT;
@@ -108,5 +108,4 @@ private:
   BT btree;
 };
 
-typedef BTreePlus<size_t, 2, 3> TheBTree;
 }

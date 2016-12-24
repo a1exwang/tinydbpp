@@ -5,6 +5,7 @@
 #include <TableManager.h>
 #include <iostream>
 #include <sstream>
+#include <BTree/TheBTree.h>
 #include <BTree/BTreePlus.h>
 
 using namespace tinydbpp;

@@ -14,8 +14,8 @@
 #include <FileUtils.h>
 #include <Pager/Page.h>
 #include <functional>
+#include <BTree/TheBTree.h>
 namespace tinydbpp {
-        class TheBTree;
         typedef std::vector< std::string> Item;
         typedef std::function<bool(const Item &)> Checker;
         typedef std::function<void(Item &)> Changer;
