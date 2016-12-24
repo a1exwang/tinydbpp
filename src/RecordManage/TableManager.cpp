@@ -107,8 +107,7 @@ int TableDescription::getOffset(const std::string & str) {
 }
 
 std::shared_ptr<TheBTree> TableDescription::getIndex(int offset) {
-    return make_shared<TheBTree>(TableManager::getInstance()->dir + "/"
-                                 +TableManager::createIndexName(name, col_name[offset]));
+    return make_shared<TheBTree>(TableManager::createIndexName(name, col_name[offset]));
 }
 
 void TableDescription::updateItems(Checker &checker, Changer &changer) {
@@ -137,6 +136,27 @@ std::vector<Item > TableDescription::deleteAndCollectItems(const Checker & check
     return ret;
 }
 
+std::vector<Item> TableDescription::deleteAndCollectUseIndex(int offset, std::string v, const Checker &checker) {
+    std::vector< Item > ret;
+    auto index = getIndex(offset);
+    auto vec = index->get(hash<string>()(v));
+    vector<string> correct_loc;
+    for(string & loc : vec) {
+        vector<string> item = RecordManager::getInstance()->getEmbedRecord(name, TheBTree::BT::stringToLocation(loc));
+        if (v == item[offset] && (checker == nullptr || checker(item)) ){
+            ret.push_back(item);
+            correct_loc.push_back(loc);
+            RecordManager::getInstance()->deleteRecord(name, TheBTree::BT::stringToLocation(loc));
+        }
+    }
+    index->remove(hash<string>()(v),[&correct_loc](const std::string & s){
+        for(auto & loc : correct_loc)
+            if(loc == s) return true;
+        return false;
+    }, false);
+    return ret;
+}
+
 std::vector< Item > TableDescription::selectUseChecker(Checker &checker)
 {
     vector<Item > ret;
@@ -146,6 +166,8 @@ std::vector< Item > TableDescription::selectUseChecker(Checker &checker)
     RecordManager::getInstance()->select(name,checker,solver);
     return ret;
 }
+
+
 
 std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string name) {
     for(auto ptr : table_map)
