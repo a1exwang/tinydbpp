@@ -131,7 +131,7 @@ Checker WhereClause::getChecker(std::string table_name) {
                         if (check_ops[i] == "<>" && !(a != b)) return false;
                         if (check_ops[i] == "<=" && !(a <= b)) return false;
                         if (check_ops[i] == ">=" && !(a >= b)) return false;
-                }
+                    }
             }
         }
         return true;
@@ -366,13 +366,21 @@ json Statement::exec() {
         vector< string > assigned_tables(tables.size(), "");
         where->dfs(ans,tables,vector<Value>(),selector, assigned_tables);
         vector<string> assigned_cols;
-        for(auto & ts : assigned_tables)
-            for(auto & name : scols->col_list->cols){
-                string table, col;
-                ColList::split(name, tables[0], table, col);
-                if(table == ts)
-                    assigned_cols.push_back(name);
+        for(auto & ts : assigned_tables) {
+            if (scols->isAll)
+            {
+                auto td = TableManager::getInstance()->getTableDescription(ts);
+                for(auto & col : td->col_name)
+                    assigned_cols.push_back(td->name + "_" + col);
             }
+            else
+                for (auto &name : scols->col_list->cols) {
+                    string table, col;
+                    ColList::split(name, tables[0], table, col);
+                    if (table == ts)
+                        assigned_cols.push_back(name);
+                }
+        }
         json ret;
         for(int i = 0;i < assigned_cols.size();i++) {
             auto a = json::array();
