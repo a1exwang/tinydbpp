@@ -238,7 +238,7 @@ namespace tinydbpp {
         p->releaseBuf(data);
     }
 
-    void RecordManager::del(const std::string &table_name,const std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::del(const std::string &table_name,const Checker &checker,
              std::function<void(const std::vector<std::string>&, Location)>& solver){
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);
@@ -287,7 +287,7 @@ namespace tinydbpp {
      * @param checker: Required, check if the record should be selected.
      * @param solver: Optional, solver is called for each selected records.
      */
-    void RecordManager::select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &checker,
+    void RecordManager::select(const std::string &table_name, const Checker &checker,
              std::function<void(std::vector<std::string>&, int, int)> & solver) {
         BOOST_ASSERT(checker);
         shared_ptr<TableDescription> td = TableManager::getInstance()->getTableDescription(table_name);

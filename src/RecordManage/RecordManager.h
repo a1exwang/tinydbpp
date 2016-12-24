@@ -40,11 +40,11 @@ namespace tinydbpp {
                              int pageID, int now);
         Location updateOneRecord(const std::string &table_name, Location loc, const std::string &res, bool fixed_res);
 
-        void del(const std::string &table_name, const std::function<bool(const std::vector<std::string>&)> &c,
+        void del(const std::string &table_name, const Checker &c,
                  std::function<void(const std::vector<std::string>&, Location)>&);
         void delOneRecord(const std::string &table_name, int pageID, int now, bool fixed);
 
-        void select(const std::string &table_name, std::function<bool(const std::vector<std::string>&)> &c,
+        void select(const std::string &table_name, const Checker &c,
                     std::function<void(std::vector<std::string>&, int, int)>&);
         std::string getRecord(const std::string &table_name, Location loc) const;
         std::vector<std::string> getEmbedRecord(const std::string& table_name, Location loc) const;

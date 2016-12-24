@@ -354,11 +354,34 @@ json Statement::exec() {
     }else if (type == SelectItem){
         vector<string> tables  = dynamic_pointer_cast<TableList>(ch[1]->getNode())->tables;
         auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
-        auto selector = dynamic_pointer_cast<SelectCols>(ch[0]->getNode())->getSelector(tables);
+        auto scols = dynamic_pointer_cast<SelectCols>(ch[0]->getNode());
+        auto selector = scols->getSelector(tables);
         vector< vector<Value> > ans;
         vector< string > assigned_tables(tables.size(), "");
         where->dfs(ans,tables,vector<Value>(),selector, assigned_tables);
-        //
+        vector<string> assigned_cols;
+        for(auto & ts : assigned_tables)
+            for(auto & name : scols->col_list->cols){
+                string table, col;
+                ColList::split(name, tables[0], table, col);
+                if(table == ts)
+                    assigned_cols.push_back(name);
+            }
+        json ret;
+        for(int i = 0;i < assigned_cols.size();i++) {
+            auto a = json::array();
+            for (auto &item : ans) {
+                if(item[i].type == "int")
+                    a.push_back(item[i].iVal);
+                else if(item[i].type == "varchar")
+                    a.push_back(item[i].strVal);
+                else if(item[i].type == "NULL")
+                    a.push_back("NULL");
+                else BOOST_ASSERT(0);
+            }
+            ret["result"][assigned_cols[i]] = a;
+        }
+
     }else if (type == CreateIdx){
         //TODO 123
     }else if (type == DropIdx){

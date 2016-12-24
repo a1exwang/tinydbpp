@@ -95,10 +95,10 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
            }
 
 idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
-                $$.makeCreateIdxNode($5);
+                $$.makeCreateIdxNode($3, $5);
             }
             | KW_DROP KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
-                $$.makeDropIdxNode($5);
+                $$.makeDropIdxNode($3, $5);
             }
 
 fieldList:  field {

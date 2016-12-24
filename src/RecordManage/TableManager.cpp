@@ -5,6 +5,8 @@
 #include <TableManager.h>
 #include <iostream>
 #include <sstream>
+#include <BTree/BTreePlus.h>
+
 using namespace tinydbpp;
 using namespace std;
 TableManager * TableManager::ins = NULL;
