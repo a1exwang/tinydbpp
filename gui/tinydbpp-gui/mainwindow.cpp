@@ -3,6 +3,9 @@
 #include <string>
 #include <QFileDialog>
 #include <QMessageBox>
+#include "../../third_party/json/src/json.hpp"
+
+using json = nlohmann::json;
 
 using namespace std;
 
@@ -19,16 +22,38 @@ void MainWindow::btnExecClicked() {
   string txt = ui->textSQL->toPlainText().toStdString();
   // TODO exec sql txt
   // get output as json
-  int rowCount = 10;
-  int colCount = 5;
 
-  ui->tableResult->setRowCount(rowCount);
-  ui->tableResult->setColumnCount(colCount);
-  for (int line = 0; line < rowCount; ++line) {
-    for (int col = 0; col < colCount; ++col) {
-      string itemStr = "data";
-      ui->tableResult->setItem(line, col, new QTableWidgetItem(itemStr.c_str()));
+  stringstream ss;
+  ss << "{\"result\": {\"c0\": [\"a\"], \"c1\": [\"b\"]}}";
+  json j;
+  ss >> j;
+  json cols = j["result"];
+
+  int colCount = 0;
+  int lineCount = 0;
+  for (auto it = cols.begin(); it != cols.end(); ++it) {
+    colCount++;
+    for (auto j = it.value().begin(); j != it.value().end(); ++j) {
+      lineCount++;
     }
+  }
+
+  ui->tableResult->setRowCount(lineCount);
+  ui->tableResult->setColumnCount(colCount);
+
+  int colNo = 0;
+  for (auto it = cols.begin(); it != cols.end(); ++it) {
+    string colName = it.key();
+
+    ui->tableResult->setItem(0, colNo, new QTableWidgetItem(colName.c_str()));
+
+    int lineNo = 1;
+    for (auto j = it.value().begin(); j != it.value().end(); ++j) {
+      string itemStr = *j;
+      ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
+      lineNo++;
+    }
+    colNo++;
   }
 
 }
