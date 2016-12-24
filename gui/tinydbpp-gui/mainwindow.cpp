@@ -4,10 +4,19 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include "../../third_party/json/src/json.hpp"
+#include <Parser/Lexer.h>
+#include <Parser/AST/Nodes.h>
+#include <Parser/Parser.tab.hpp>
+#include <Parser/ParsingError.h>
+#include <boost/assert.hpp>
+#include <iostream>
+#include <sstream>
+#include <RecordManage/TableManager.h>
+
 
 using json = nlohmann::json;
-
 using namespace std;
+using namespace tinydbpp;
 
 MainWindow::MainWindow(QWidget *parent) :
   QMainWindow(parent),
@@ -22,40 +31,81 @@ void MainWindow::btnExecClicked() {
   string txt = ui->textSQL->toPlainText().toStdString();
   // TODO exec sql txt
   // get output as json
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << txt << endl;
+  parser.parse();
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    json j = s->exec();
+    json cols = j["result"];
+    if (cols.is_null()) {
 
-  stringstream ss;
-  ss << "{\"result\": {\"c0\": [\"a\"], \"c1\": [\"b\"]}}";
-  json j;
-  ss >> j;
-  json cols = j["result"];
+    }
+    else if (s->getType() == tinydbpp::ast::Statement::Type::DesribeTable) {
+      int colCount = 0;
+      int lineCount = 0;
+      for (auto it = cols.begin(); it != cols.end(); ++it) {
+        colCount++;
+        for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
+          lineCount++;
+        }
+      }
+      ui->tableResult->setRowCount(lineCount);
+      ui->tableResult->setColumnCount(colCount);
 
-  int colCount = 0;
-  int lineCount = 0;
-  for (auto it = cols.begin(); it != cols.end(); ++it) {
-    colCount++;
-    for (auto j = it.value().begin(); j != it.value().end(); ++j) {
-      lineCount++;
+      int colNo = 0;
+      for (auto it = cols.begin(); it != cols.end(); ++it) {
+        string colName = it.key();
+
+        ui->tableResult->setItem(0, colNo, new QTableWidgetItem(colName.c_str()));
+
+        int lineNo = 1;
+        for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
+          string itemStr = (*innerIt).dump();
+          ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
+          lineNo++;
+        }
+        colNo++;
+      }
+    }
+    else if (cols.is_string()) {
+      ui->tableResult->setRowCount(1);
+      ui->tableResult->setColumnCount(1);
+
+      ui->tableResult->setItem(0, 0, new QTableWidgetItem(cols.dump().c_str()));
+    }
+    else if (cols.is_object()) {
+      int colCount = 0;
+      int lineCount = 0;
+      for (auto it = cols.begin(); it != cols.end(); ++it) {
+        colCount++;
+        for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
+          lineCount++;
+        }
+      }
+      ui->tableResult->setRowCount(lineCount);
+      ui->tableResult->setColumnCount(colCount);
+
+      int colNo = 0;
+      for (auto it = cols.begin(); it != cols.end(); ++it) {
+        string colName = it.key();
+
+        ui->tableResult->setItem(0, colNo, new QTableWidgetItem(colName.c_str()));
+
+        int lineNo = 1;
+        for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
+          string itemStr = *innerIt;
+          ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
+          lineNo++;
+        }
+        colNo++;
+      }
     }
   }
-
-  ui->tableResult->setRowCount(lineCount);
-  ui->tableResult->setColumnCount(colCount);
-
-  int colNo = 0;
-  for (auto it = cols.begin(); it != cols.end(); ++it) {
-    string colName = it.key();
-
-    ui->tableResult->setItem(0, colNo, new QTableWidgetItem(colName.c_str()));
-
-    int lineNo = 1;
-    for (auto j = it.value().begin(); j != it.value().end(); ++j) {
-      string itemStr = *j;
-      ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
-      lineNo++;
-    }
-    colNo++;
-  }
-
 }
 
 void MainWindow::btnChangeDB() {

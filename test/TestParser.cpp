@@ -85,3 +85,4 @@ BOOST_AUTO_TEST_CASE(createTable) {
     BOOST_REQUIRE(td->pattern.size() == 3);
 
 }
+
