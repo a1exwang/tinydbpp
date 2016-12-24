@@ -195,11 +195,12 @@ bool TableManager::changeDB(std::string db, bool auto_create) {
     if(db == dbname)
         return true;
     string dbtable_name = this->base_dir + "/" + db + "/" + SYS_TABLE_NAME;
-    if(!FileUtils::isExist(dbtable_name.c_str()))
-        if(!auto_create)
+    if(!FileUtils::isExist(dbtable_name.c_str())) {
+        if (!auto_create)
             return false;
         else
             FileUtils::createFile(dbtable_name.c_str());
+    }
     this->dbname = db;
     this->dir = this->base_dir + "/" + db;
     table_map.clear();

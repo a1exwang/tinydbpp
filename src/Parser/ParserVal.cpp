@@ -152,14 +152,15 @@ void ParserVal::makeSelectTbNode(const ParserVal & ch0, const ParserVal & ch1, c
 
 }
 
-void ParserVal::makeCreateIdxNode(const ParserVal & ch0) {
+void ParserVal::makeCreateIdxNode(const ParserVal & ch0, const ParserVal & ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::CreateIdx);
     node->ch[0] = std::make_shared<ParserVal>(ch0);
-
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 }
 
-void ParserVal::makeDropIdxNode(const ParserVal & ch0) {
+void ParserVal::makeDropIdxNode(const ParserVal & ch0, const ParserVal & ch1) {
     node = std::make_shared<ast::TableManagement>(ast::Statement::Type::DropIdx);
     node->ch[0] = std::make_shared<ParserVal>(ch0);
+    node->ch[1] = std::make_shared<ParserVal>(ch1);
 }
 

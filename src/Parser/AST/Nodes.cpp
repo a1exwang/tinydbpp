@@ -12,6 +12,7 @@
 #include <BTree/BTreePlus.h>
 #include <config.h>
 using namespace std;
+using namespace tinydbpp;
 using namespace tinydbpp::ast;
 
 std::shared_ptr<const tinydbpp::ParserVal> SysManagement::getTarget() const {
@@ -99,7 +100,9 @@ Checker WhereClause::getChecker(std::string table_name) {
                 if(check_value[i].type == "col")
                     b = *(int *)item[check_value[i].iVal].c_str(), b_null = item[check_value[i].iVal].back();
                 if(check_ops[i] == "isnull")
-                    if(a_null != 1) return false;
+                    {
+                        if(a_null != 1) return false;
+                    }
                 else {
                     if(a_null == 1 || b_null == 1) return false;
                     if(check_ops[i] == "=" && !(a == b)) return false;
@@ -117,8 +120,10 @@ Checker WhereClause::getChecker(std::string table_name) {
                 if(check_value[i].type == "col")
                     b = string(item[check_value[i].iVal].begin(), item[check_value[i].iVal].end() - 1), b_null = item[check_value[i].iVal].back();
                 if(check_ops[i] == "isnull")
+                {
                     if(a_null != 1) return false;
-                    else {
+                }
+                else {
                         if (a_null == 1 || b_null == 1) return false;
                         if (check_ops[i] == "=" && !(a == b)) return false;
                         if (check_ops[i] == "<" && !(a < b)) return false;
@@ -126,7 +131,7 @@ Checker WhereClause::getChecker(std::string table_name) {
                         if (check_ops[i] == "<>" && !(a != b)) return false;
                         if (check_ops[i] == "<=" && !(a <= b)) return false;
                         if (check_ops[i] == ">=" && !(a >= b)) return false;
-                    }
+                }
             }
         }
         return true;
@@ -174,7 +179,7 @@ void WhereClause::dfs(std::vector< vector<Value> > &ans, const std::vector<std::
     string v;
     string table_name = this->getNextAssignTableName(can_index, col_offset, v, table_names);
     vector<string> next_table_names;
-    for(int i = 0;i < table_names;i++)
+    for(int i = 0;i < table_names.size();i++)
         if(table_names[i] != table_name)
             next_table_names.push_back(table_names[i]);
         else if(assigned_table[table_names.size() - 1] == "")
@@ -186,8 +191,9 @@ void WhereClause::dfs(std::vector< vector<Value> > &ans, const std::vector<std::
     else this_table_items = TableManager::getInstance()->getTableDescription(table_name)->selectUseChecker(checker);
     for(auto &item : this_table_items) {
         vector<Value> selected_item = selector(item, table_name);
-        vector<Value> merged_item(prefix.size() + selected_item.size());
-        merge(prefix.begin(), prefix.end(), selected_item.begin(), selected_item.end(), merged_item.begin());
+        vector<Value> merged_item(prefix);
+        for(auto & v : selected_item)
+            merged_item.push_back(v);
         if (table_names.size() > 1)
             this->assign(table_name, item).dfs(ans, next_table_names, merged_item, selector, assigned_table);
         else
