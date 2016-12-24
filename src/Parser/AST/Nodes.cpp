@@ -161,7 +161,7 @@ std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index,
                 col_index = j;
                 if(exprs[i].type == "int"){
                     v_str = string(5, '\0');
-                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(exprs[i].iVal), (char*)(&(exprs[i].iVal)+ 4)));
+                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(exprs[i].iVal), (char*)&(exprs[i].iVal)+ 4));
                 }else v_str = exprs[i].strVal + string(1,0);
                 return table_name;
             }
