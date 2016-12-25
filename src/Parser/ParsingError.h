@@ -19,4 +19,7 @@ private:
   std::string rawText;
 };
 
+class TypeError : public std::runtime_error {
+
+};
 }
