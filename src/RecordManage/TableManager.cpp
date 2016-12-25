@@ -176,6 +176,15 @@ void TableDescription::traverseWithLocation(std::function<void(const Item &item,
     RecordManager::getInstance()->select(name,checker,solver);
 }
 
+int TableDescription::getColIdOfIndex(const std::string &colName) const {
+    for (int i = 0; i < this->col_name.size(); ++i) {
+        if (colName == this->col_name[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string name) {
     for(auto ptr : table_map)
         if(ptr->name == name)
@@ -290,4 +299,32 @@ bool TableManager::dropTable(std::string name) {
             ret = true;
         }
     return ret;
+}
+
+void TableManager::writeBackTableDescription(std::string tableName, std::shared_ptr<TableDescription> td) {
+    stringstream ostr;
+    ostr << "    ";
+    ostr << td->col_name.size();
+    for(int i = 0;i < td->col_name.size();i++) {
+        string colName,t;
+        int pat, b1, b2, w;
+        ostr << td->col_name[i]
+                << td->col_type[i]
+                << pat
+                << td->col_not_null[i]
+                << td->col_unique[i]
+                << td->col_width[i];
+//                << td->col_has_index[i];
+        // DONE check has index
+        FileUtils fileUtils;
+        int hasIndex = fileUtils.isExist((dir + "/" + createIndexName(tableName, colName)).c_str());
+    }
+    auto result = ostr.str();
+
+    auto p = td->getPager()->getPage(0);
+    char* buf = p->getBuf();
+    memcpy(buf, result.c_str(), result.size());
+    p->markDirty();
+    p->writeBack();
+    p->releaseBuf(buf);
 }

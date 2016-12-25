@@ -338,6 +338,18 @@ json Statement::exec() {
                     v_str = v->strVal + string(1,0);
                 item.push_back(v_str);
                 //TODO special check
+                string curCol = td->col_name[i];
+                if (curCol.size() > 3 && curCol.substr(curCol.size() - 3, 3) == "_id") {
+                    string otherTableName = curCol.substr(0, curCol.size() - 3);
+                    auto otherTd = TableManager::getInstance()->getTableDescription(otherTableName);
+                    int indexColId = otherTd->getColIdOfIndex("id");
+                    if (otherTd == nullptr || indexColId < 0) {
+                        return json({{"result", "Foreign key constraint violation."}});
+                    }
+                    auto result = otherTd->selectUseIndex(indexColId, v_str);
+                    if (result.size() == 0)
+                        return json({{"result", "Foreign key constraint violation."}});
+                }
             }
             if(td->insertInTable(item))
                 return json({{"result", "Succeed."}});
@@ -437,7 +449,7 @@ json Statement::exec() {
                 }
                 td->col_has_index[i] = true;
                 // 2. write back
-                // TODO write back
+//                TableManager::getInstance()->writeBackTableDescription(tableName, td);
                 colFound = true;
                 colId = i;
                 break;
@@ -472,7 +484,6 @@ json Statement::exec() {
                 }
                 td->col_has_index[i] = false;
                 // 2. write back
-                // TODO write back
                 colFound = true;
                 break;
             }
