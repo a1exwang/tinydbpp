@@ -168,7 +168,13 @@ std::vector< Item > TableDescription::selectUseChecker(Checker &checker)
     return ret;
 }
 
-
+void TableDescription::traverseWithLocation(std::function<void(const Item &item, Location)> callback) {
+    std::function<void( Item&, int, int)> solver = [callback]( Item& item, int pageNo, int offset){
+      callback(item, Location(pageNo, offset));
+    };
+    auto checker = [](const Item&) -> bool { return true; };
+    RecordManager::getInstance()->select(name,checker,solver);
+}
 
 std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string name) {
     for(auto ptr : table_map)

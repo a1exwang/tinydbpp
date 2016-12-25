@@ -144,3 +144,46 @@ BOOST_AUTO_TEST_CASE(updateRecords) {
   BOOST_REQUIRE(td != nullptr);
   BOOST_REQUIRE(td->pattern.size() == 3);
 }
+
+BOOST_AUTO_TEST_CASE(createIndex) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_createIndex;" << endl;
+  ssin << "use database test_createIndex;" << endl;
+  ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null, num int(10), PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into T1 values (1, 't1_varchar1', 10, 100),(2, 't1_varchar2', 20, 200);"<<endl;
+  ssin << "create index T1 ( num ); " << endl;
+  ssin << "desc T1; " << endl;
+  ssin << "select * from T1 where num = 100;" << endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(dropIndex) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_dropIndex;" << endl;
+  ssin << "use database test_dropIndex;" << endl;
+  ssin << "create table T1 ( id int(10), p varchar(10), pp int(10) not null, num int(10), PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into T1 values (1, 't1_varchar1', 10, 100),(2, 't1_varchar2', 20, 200);"<<endl;
+  ssin << "create index T1 ( num ); " << endl;
+  ssin << "drop index T1 ( num ); " << endl;
+  ssin << "desc T1; " << endl;
+  ssin << "select * from T1 where num = 100;" << endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}
