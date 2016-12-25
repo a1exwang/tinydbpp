@@ -8,6 +8,8 @@
 #include <BTree/TheBTree.h>
 #include <BTree/BTreePlus.h>
 #include <json.hpp>
+#include <Parser/ParsingError.h>
+
 using json = nlohmann::json;
 
 using namespace tinydbpp;
@@ -71,29 +73,38 @@ std::string TableDescription::embed(const Item& list, bool & fixed_res){
 bool TableDescription::insertInTable(const Item &item) {
     for(int i = 0;i < col_name.size();i++)
     {
-        // Check foreign key
         string curCol = this->col_name[i];
-        if (curCol.size() > 3 && curCol.substr(curCol.size() - 3, 3) == "_id") {
-          string v_str = item[i];
-          string otherTableName = curCol.substr(0, curCol.size() - 3);
-          auto otherTd = TableManager::getInstance()->getTableDescription(otherTableName);
-          int indexColId = otherTd->getColIdOfIndex("id");
-          if (otherTd == nullptr || indexColId < 0) {
-            return false;
-          }
-          // is not null
-          if (*(v_str.end()-1) == 0) {
-            bool found = false;
-            auto result = otherTd->selectUseIndex(indexColId, v_str);
-            for (auto itemResult : result) {
-              if (itemResult[indexColId] == v_str) {
-                found = true;
-                break;
-              }
+        string value = item[i];
+        // Check gender
+        if (curCol == "gender") {
+            if (value != string("M",2) && value != string("F",2)) {
+                return false;
             }
-            if (!found)
+        }
+
+        // Check foreign key
+        if (curCol.size() > 3 && curCol.substr(curCol.size() - 3, 3) == "_id") {
+            string otherTableName = curCol.substr(0, curCol.size() - 3);
+            auto otherTd = TableManager::getInstance()->getTableDescription(otherTableName);
+            int indexColId = otherTd->getColIdOfIndex("id");
+            // Cannot find table name or column name
+            if (otherTd == nullptr || indexColId < 0) {
+
               return false;
-          }
+            }
+            // is not null
+            if (*(value.end()-1) == 0) {
+              bool found = false;
+              auto result = otherTd->selectUseIndex(indexColId, value);
+              for (auto itemResult : result) {
+                if (itemResult[indexColId] == value) {
+                  found = true;
+                  break;
+                }
+              }
+              if (!found)
+                return false;
+            }
         }
 
         if(col_not_null[i] == 1 && item[i].back() == 1) return false;
@@ -142,8 +153,13 @@ std::shared_ptr<TheBTree> TableDescription::getIndex(int offset) {
 
 void TableDescription::updateItems(std::vector< Item > & deleted_items, Changer &changer) {
     for(auto & item : deleted_items) {
+        auto backupItem = item;
         changer(item);
-        insertInTable(item);
+        if (!insertInTable(item)) {
+            if (!insertInTable(backupItem)) {
+                throw DoubleFault("Double fault");
+            }
+        }
     }
 }
 
@@ -251,7 +267,7 @@ std::shared_ptr<TableDescription> TableManager::getTableDescription(std::string 
         }
         p->releaseBuf(buf);
     };
-    if(name.find("_") == string::npos)// not index "table"
+    if(name.find(".") == string::npos)// not index "table"
         parse_func(ret);
     table_map.push_back(ret);
     return ret;
@@ -302,7 +318,7 @@ bool TableManager::buildTable(std::string name, std::function<void(Pager *)> cal
 }
 
 std::string TableManager::createIndexName(const std::string &tableName, const std::string &colName) {
-    return tableName + "_" + colName;
+    return tableName + "." + colName;
 }
 
 bool TableManager::parseIndex(const std::string &indexName, const std::string &tableName, std::string &colName) {
@@ -315,14 +331,14 @@ bool TableManager::parseIndex(const std::string &indexName, const std::string &t
 
 bool TableManager::dropTable(std::string name) {
     for(auto iter = table_map.begin();iter != table_map.end();)
-        if((*iter)->name == name || ((*iter)->name).find(name + "_") != string::npos)
+        if((*iter)->name == name || ((*iter)->name).find(name + ".") != string::npos)
             table_map.erase(iter++);
         else iter ++;
 
     auto files = FileUtils::listFiles(dir.c_str());
     bool ret = false;
     for(auto & f : files)
-        if(f == name || f.find(name + "_") != string::npos) {
+        if(f == name || f.find(name + ".") != string::npos) {
             FileUtils::deleteFile((dir + "/" + f).c_str());
             ret = true;
         }

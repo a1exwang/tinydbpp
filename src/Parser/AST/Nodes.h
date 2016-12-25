@@ -218,7 +218,7 @@ public:
     std::vector<std::string> cols;
     void push_back(std::string colname){ cols.push_back(colname);}
     static void split(const std::string& full_name, const std::string& default_table, std::string & table, std::string & col){
-        size_t pos = full_name.find("_");
+        size_t pos = full_name.find(".");
         table =  pos == std::string::npos? default_table : string(full_name.begin(), full_name.begin() + pos);
         col = pos == std::string::npos? full_name : string(full_name.begin() + pos + 1, full_name.end());
     }

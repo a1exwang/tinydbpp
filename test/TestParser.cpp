@@ -144,7 +144,7 @@ using namespace std;
 //  BOOST_REQUIRE(td != nullptr);
 //  BOOST_REQUIRE(td->pattern.size() == 3);
 //}
-//
+
 //BOOST_AUTO_TEST_CASE(createIndex) {
 //  stringstream ssin, ssout;
 //  Lexer lexer(ssin, ssout);
@@ -187,19 +187,41 @@ using namespace std;
 //    cout << "result: " << s->exec() << endl;
 //  }
 //}
+//
+//BOOST_AUTO_TEST_CASE(insertWithForeignKey) {
+//  stringstream ssin, ssout;
+//  Lexer lexer(ssin, ssout);
+//  shared_ptr<ast::Node> node;
+//  Parser parser(lexer, node);
+//  ssin << "create database test_insertWithForeignKey;" << endl;
+//  ssin << "use database test_insertWithForeignKey;" << endl;
+//  ssin << "create table customer ( id int(10), name varchar(10), PRIMARY KEY  (id));"<<endl;
+//  ssin << "create table orders ( id int(10), customer_id int(10), PRIMARY KEY  (id));"<<endl;
+//  ssin << "insert into customer values (1, 'alex'),(2, 'bob'),(3, 'ciara');"<<endl;
+//  ssin << "insert into orders values (1, 1),(2, 2);"<<endl;
+//  ssin << "insert into orders values (3, 10);"<<endl;
+//  ssin << "select * from orders where id <> 0;"<<endl;
+//  BOOST_REQUIRE(parser.parse() == 0);
+//  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+//  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+//  auto ss = stmts->get();
+//  for (auto &s: ss) {
+//    cout << "result: " << s->exec() << endl;
+//  }
+//}
 
-BOOST_AUTO_TEST_CASE(insertWithForeignKey) {
+BOOST_AUTO_TEST_CASE(updateWithForeignKey) {
   stringstream ssin, ssout;
   Lexer lexer(ssin, ssout);
   shared_ptr<ast::Node> node;
   Parser parser(lexer, node);
-  ssin << "create database test_insertWithForeignKey;" << endl;
-  ssin << "use database test_insertWithForeignKey;" << endl;
+  ssin << "create database test_updateWithForeignKey;" << endl;
+  ssin << "use database test_updateWithForeignKey;" << endl;
   ssin << "create table customer ( id int(10), name varchar(10), PRIMARY KEY  (id));"<<endl;
   ssin << "create table orders ( id int(10), customer_id int(10), PRIMARY KEY  (id));"<<endl;
   ssin << "insert into customer values (1, 'alex'),(2, 'bob'),(3, 'ciara');"<<endl;
   ssin << "insert into orders values (1, 1),(2, 2);"<<endl;
-  ssin << "insert into orders values (3, 10);"<<endl;
+  ssin << "update orders set customer_id = 10 where customer_id = 2;"<<endl;
   ssin << "select * from orders where id <> 0;"<<endl;
   BOOST_REQUIRE(parser.parse() == 0);
   BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
@@ -210,3 +232,22 @@ BOOST_AUTO_TEST_CASE(insertWithForeignKey) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(insertGender) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_insertGender;" << endl;
+  ssin << "use database test_insertGender;" << endl;
+  ssin << "create table customer ( id int(10), name varchar(10), gender varchar(10), PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into customer values (1, 'alex', 'M'),(2, 'bob', 'M'),(3, 'ciara', 'F');"<<endl;
+  ssin << "insert into customer values (1, 'monkey', 'fuck');"<<endl;
+  ssin << "select * from customer where id <> 0;"<<endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}

@@ -197,7 +197,7 @@ whereClause : col op expr {
                 $$ = ParserVal(ptr);
             } 
 col : IDENTIFIER '.' IDENTIFIER{
-        $$.strVal = $1.strVal + "_" + $3.strVal;
+        $$.strVal = $1.strVal + "." + $3.strVal;
     }
     | IDENTIFIER{
         $$.strVal = $1.strVal;

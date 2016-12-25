@@ -65,12 +65,12 @@ Checker WhereClause::getChecker(std::string table_name) {
     for(int i = 0;i < names.size();i++)
         {
             string col_name, col2_name;
-            if (names[i].find("_") == string::npos) col_name = names[i];
-            else if( names[i].find(table_name + "_") != string::npos)
-                col_name = string(names[i].begin() + names[i].find("_") + 1, names[i].end());
+            if (names[i].find(".") == string::npos) col_name = names[i];
+            else if( names[i].find(table_name + ".") != string::npos)
+                col_name = string(names[i].begin() + names[i].find(".") + 1, names[i].end());
             else continue;
             if (exprs[i].type == "col"){
-                size_t pos = exprs[i].strVal.find("_");
+                size_t pos = exprs[i].strVal.find(".");
                 if(pos == string::npos)
                     col2_name = exprs[i].strVal;
                 else if(string(exprs[i].strVal.begin(), exprs[i].strVal.begin() + pos) == table_name)
@@ -147,7 +147,7 @@ std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index,
         for(int i = 0;i < names.size();i++)
         if(ops[i] == "=" && exprs[i].type != "col")
         {
-            size_t pos = names[i].find("_");
+            size_t pos = names[i].find(".");
             string this_table =  pos == string::npos? default_table : string(names[i].begin(), names[i].begin() + pos);
             if(table_name != this_table) continue;
             string col_name = pos == string::npos? names[i] : string(names[i].begin() + pos + 1, names[i].end());
@@ -207,7 +207,7 @@ WhereClause WhereClause::assign(const std::string &table_name, const Item &item)
     auto td = TableManager::getInstance()->getTableDescription(table_name);
     for(int i = 0;i < names.size();i++)
     {
-        size_t pos = names[i].find("_");
+        size_t pos = names[i].find(".");
         string this_table =  pos == string::npos? table_name : string(names[i].begin(), names[i].begin() + pos);
         string col_name = pos == string::npos? names[i] : string(names[i].begin() + pos + 1, names[i].end());
         if(exprs[i].type != "col"){
@@ -217,7 +217,7 @@ WhereClause WhereClause::assign(const std::string &table_name, const Item &item)
                 ret.exprs.push_back(exprs[i]);
             }
         }else{
-            pos = exprs[i].strVal.find("_");
+            pos = exprs[i].strVal.find(".");
             string this_table2 = pos == string::npos? table_name : string(exprs[i].strVal.begin(), exprs[i].strVal.begin() + pos);
             string col_name2 = pos == string::npos? exprs[i].strVal : string(exprs[i].strVal.begin() + pos + 1, exprs[i].strVal.end());
             if(this_table == table_name && this_table2 == table_name) continue;
@@ -270,7 +270,7 @@ json Statement::exec() {
                 vector<string> ret;
                 auto file_name_list = FileUtils::listFiles(TableManager::getInstance()->dir.c_str());
                 for (auto &str : file_name_list)
-                    if (str.find("_") == str.npos && str != SYS_TABLE_NAME) {
+                    if (str.find(".") == str.npos && str != SYS_TABLE_NAME) {
                         ret.push_back(str);
                     }
                 return json({{"result", ret}});
@@ -399,7 +399,7 @@ json Statement::exec() {
                 if (scols->isAll) {
                     auto td = TableManager::getInstance()->getTableDescription(ts);
                     for (auto &col : td->col_name)
-                        assigned_cols.push_back(td->name + "_" + col);
+                        assigned_cols.push_back(td->name + "." + col);
                 } else
                     for (auto &name : scols->col_list->cols) {
                         string table, col;

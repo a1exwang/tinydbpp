@@ -29,4 +29,9 @@ public:
 
     }
 };
+class DoubleFault :public std::runtime_error {
+public:
+  DoubleFault(const std::string &str) :std::runtime_error(str) {
+  }
+};
 }
