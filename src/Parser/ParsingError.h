@@ -26,6 +26,7 @@ public:
     }
     virtual std::string toString() const {
         return std::string("Type ") + type1 + " and " + type2 + " do not incompatible";
+
     }
 };
 }
