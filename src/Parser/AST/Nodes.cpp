@@ -13,6 +13,7 @@
 #include <BTree/BTreePlus.h>
 #include <config.h>
 #include <ParsingError.h>
+#include <regex>
 using namespace std;
 using namespace tinydbpp;
 using namespace tinydbpp::ast;
@@ -132,6 +133,8 @@ Checker WhereClause::getChecker(std::string table_name) {
                         if (check_ops[i] == "<>" && !(a != b)) return false;
                         if (check_ops[i] == "<=" && !(a <= b)) return false;
                         if (check_ops[i] == ">=" && !(a >= b)) return false;
+                        cout << "regex: " << b << endl;
+                        if (check_ops[i] == "like" && !regex_match(a, regex(b))) return false;
                     }
             }
         }
@@ -245,6 +248,26 @@ WhereClause WhereClause::assign(const std::string &table_name, const Item &item)
         }
     }
     return ret;
+}
+
+void WhereClause::becomeLike(const std::string &colname, const string &regexp) {
+    names.push_back(colname);
+    ops.push_back("like");
+    string test = "abc def abc def";
+
+    test = regex_replace(regexp, std::regex("%"), "\\.\\*");
+    string escapedRegexp;
+    for (int i = 0; i < regexp.size(); ++i) {
+        if (!(isdigit(regexp[i]) || isalpha(regexp[i]) || regexp[i] == '%' || regexp[i] == '_')) {
+            escapedRegexp += "\\";
+        }
+        escapedRegexp += regexp[i];
+    }
+    escapedRegexp = regex_replace(escapedRegexp, regex("%"), ".*");
+    escapedRegexp = regex_replace(escapedRegexp, regex("_"), ".");
+    Value v("varchar");
+    v.strVal = escapedRegexp;
+    exprs.push_back(v);
 }
 
 json Statement::exec() {

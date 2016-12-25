@@ -169,6 +169,7 @@ public:
     void becomeIsNull(const std::string& colname);
     void becomeIsNotNull(const std::string& colname);
     void becomeAnd(std::shared_ptr<WhereClause> w1, std::shared_ptr<WhereClause> w2);
+    void becomeLike(const std::string &colname, const std::string &regex);
     /*
      * @param actually two return value, whether can be optimized by index and which col
      * @return which table to reduce

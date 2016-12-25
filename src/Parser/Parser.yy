@@ -29,7 +29,7 @@ using namespace std;
 %define api.value.type {ParserVal}
 %define parser_class_name {Parser}
 
-%token KW_DATABASE KW_DATABASES KW_TABLE KW_TABLES KW_SHOW KW_CREATE KW_DROP KW_USE KW_PRIMARY KW_KEY KW_NOT KW_NULL KW_INSERT KW_INTO KW_VALUES KW_DELETE KW_FROM KW_WHERE KW_UPDATE KW_SET KW_SELECT KW_IS KW_INT KW_VARCHAR KW_DESC KW_INDEX KW_AND
+%token KW_DATABASE KW_DATABASES KW_TABLE KW_TABLES KW_SHOW KW_CREATE KW_DROP KW_USE KW_PRIMARY KW_KEY KW_NOT KW_NULL KW_INSERT KW_INTO KW_VALUES KW_DELETE KW_FROM KW_WHERE KW_UPDATE KW_SET KW_SELECT KW_IS KW_INT KW_VARCHAR KW_DESC KW_INDEX KW_AND KW_LIKE
 %token KW_LEQ KW_NEQ KW_GEQ
 %token IDENTIFIER STRING INT FLOAT
 %token SEMICOLON
@@ -191,11 +191,17 @@ whereClause : col op expr {
                 ptr->becomeIsNotNull($1.strVal);
                 $$ = ParserVal(ptr);
             }
+            | col KW_LIKE STRING {
+                std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
+                ptr->becomeLike($1.strVal, $3.strVal);
+                $$ = ParserVal(ptr);
+            }
             | whereClause KW_AND whereClause{
                 std::shared_ptr<ast::WhereClause> ptr(new ast::WhereClause());
                 ptr->becomeAnd(std::dynamic_pointer_cast<ast::WhereClause>($1.getNode()), std::dynamic_pointer_cast<ast::WhereClause>($3.getNode()));
                 $$ = ParserVal(ptr);
-            } 
+            }
+
 col : IDENTIFIER '.' IDENTIFIER{
         $$.strVal = $1.strVal + "." + $3.strVal;
     }

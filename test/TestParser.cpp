@@ -251,3 +251,40 @@ BOOST_AUTO_TEST_CASE(insertGender) {
     cout << "result: " << s->exec() << endl;
   }
 }
+BOOST_AUTO_TEST_CASE(selectRegex) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_selectRegex;" << endl;
+  ssin << "use database test_selectRegex;" << endl;
+  ssin << "create table customer ( id int(10), name varchar(10), PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into customer values (1, 'alex'),(2, 'bob'),(3, 'ciara');"<<endl;
+  ssin << "select * from customer where name like 'a%';"<<endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}
+
+BOOST_AUTO_TEST_CASE(testNull) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_testNull;" << endl;
+  ssin << "use database test_testNull;" << endl;
+  ssin << "create table customer ( id int(10), name varchar(10), PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into customer values (1, 'alex'),(2, 'bob'),(3, null);"<<endl;
+  ssin << "select * from customer where name is not null;"<<endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}

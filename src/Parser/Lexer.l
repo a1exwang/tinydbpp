@@ -48,6 +48,7 @@
 (?i:desc) { yylval.becomeKeyword("desc"); return Token::KW_DESC; }
 (?i:index) { yylval.becomeKeyword("index"); return Token::KW_INDEX; }
 (?i:and) { yylval.becomeKeyword("and"); return Token::KW_AND; }
+(?i:like) { yylval.becomeKeyword("like"); return Token::KW_LIKE; }
 
 '[^']*' {
     yylval.becomeStringLiteral(yytext, yyleng);
