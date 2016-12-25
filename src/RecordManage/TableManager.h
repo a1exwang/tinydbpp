@@ -42,7 +42,7 @@ namespace tinydbpp {
             std::vector< Item > selectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
             std::vector< Item > deleteAndCollectItems(const Checker &checker);
             std::vector< Item > deleteAndCollectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
-            void updateItems(Checker &checker,Changer &changer);
+            void updateItems(const std::vector< Item > & deleted_items,Changer &changer);
             std::vector< Item > selectUseChecker(Checker &checker);
             void traverseWithLocation(std::function<void(const Item &item, Location)> callback);
             int getColIdOfIndex(const std::string &colName) const;

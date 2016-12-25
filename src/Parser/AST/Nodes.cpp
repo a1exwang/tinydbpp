@@ -367,10 +367,10 @@ json Statement::exec() {
         auto checker = where->getChecker(table_name);
         auto td = TableManager::getInstance()->getTableDescription(table_name);
         Changer changer = dynamic_pointer_cast<SetClause>(ch[1]->getNode())->getChanger(table_name);
-        //        if(can_index){
-//          TODO index optimize
-//        }else
-        td->updateItems(checker, changer);
+        if(can_index){
+          td->updateItems(td->deleteAndCollectUseIndex(col_offset, v, checker), changer);
+        }else
+            td->updateItems(td->deleteAndCollectItems(checker), changer);
         return json({{"result", "Finished."}});
     }else if (type == DeleteItem){
         if(!TableManager::getInstance()->hasDB())
@@ -383,10 +383,10 @@ json Statement::exec() {
         string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
         auto checker = where->getChecker(table_name);
         auto td = TableManager::getInstance()->getTableDescription(table_name);
-//        if(can_index){
-//          TODO index optimize
-//        }else
-        td->deleteAndCollectItems(checker);
+        if(can_index){
+            td->deleteAndCollectUseIndex(col_offset, v, checker);
+        }else
+            td->deleteAndCollectItems(checker);
         return json({{"result", "Finished."}});
     }else if (type == SelectItem){
         if(!TableManager::getInstance()->hasDB())
