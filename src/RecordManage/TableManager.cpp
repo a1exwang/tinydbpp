@@ -7,6 +7,8 @@
 #include <sstream>
 #include <BTree/TheBTree.h>
 #include <BTree/BTreePlus.h>
+#include <json.hpp>
+using json = nlohmann::json;
 
 using namespace tinydbpp;
 using namespace std;
@@ -69,6 +71,31 @@ std::string TableDescription::embed(const Item& list, bool & fixed_res){
 bool TableDescription::insertInTable(const Item &item) {
     for(int i = 0;i < col_name.size();i++)
     {
+        // Check foreign key
+        string curCol = this->col_name[i];
+        if (curCol.size() > 3 && curCol.substr(curCol.size() - 3, 3) == "_id") {
+          string v_str = item[i];
+          string otherTableName = curCol.substr(0, curCol.size() - 3);
+          auto otherTd = TableManager::getInstance()->getTableDescription(otherTableName);
+          int indexColId = otherTd->getColIdOfIndex("id");
+          if (otherTd == nullptr || indexColId < 0) {
+            return false;
+          }
+          // is not null
+          if (*(v_str.end()-1) == 0) {
+            bool found = false;
+            auto result = otherTd->selectUseIndex(indexColId, v_str);
+            for (auto itemResult : result) {
+              if (itemResult[indexColId] == v_str) {
+                found = true;
+                break;
+              }
+            }
+            if (!found)
+              return false;
+          }
+        }
+
         if(col_not_null[i] == 1 && item[i].back() == 1) return false;
         if(col_unique[i] == 1 && item[i].back() != 1 && col_has_index[i] == 1){
             auto res = selectUseIndex(i, item[i]);
@@ -78,11 +105,13 @@ bool TableDescription::insertInTable(const Item &item) {
     bool fixed_res;
     string rec = embed(item, fixed_res);
     Location loc = RecordManager::getInstance()->insert(name, rec, fixed_res);
-    for (int i = 0; i < col_name.size(); i++)
+    for (int i = 0; i < col_name.size(); i++) {
         if (col_has_index[i] == 1) {
             auto index = getIndex(i);
             index->insert(std::hash<string>()(item[i]), TheBTree::BT::locationToString(loc), false);
         }
+    }
+
     return true;
 }
 
