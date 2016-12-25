@@ -146,6 +146,7 @@ Checker WhereClause::getChecker(std::string table_name) {
 
 std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index, string & v_str, const std::vector<std::string>& tables) {
     string default_table = tables[0];
+    string rank2_table = default_table;
     for(auto & table_name : tables){
         auto td = TableManager::getInstance()->getTableDescription(table_name);
         for(int i = 0;i < names.size();i++)
@@ -170,11 +171,22 @@ std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index,
                 }else v_str = exprs[i].strVal + string(1,0);
                 return table_name;
             }
+        }else if(ops[i] == "=" && exprs[i].type == "col"){
+            string this_table, col_name;
+            ColList::split(names[i], default_table, this_table, col_name);
+            string this_table2, col_name2;
+            ColList::split(exprs[i].strVal, default_table, this_table2, col_name2);
+            auto td2 = TableManager::getInstance()->getTableDescription(this_table2);
+            auto td = TableManager::getInstance()->getTableDescription(this_table);
+            if(table_name == this_table && table_name != this_table2 && td2->col_has_index[td2->getOffset(col_name2)])
+                rank2_table = table_name;
+            else if(table_name != this_table && table_name == this_table2 && td->col_has_index[td->getOffset(col_name)])
+                rank2_table = table_name;
         }
     }
     can_index = false;
     col_index = 0;
-    return default_table;
+    return rank2_table;
 }
 
 void WhereClause::dfs(std::vector< vector<Value> > &ans, const std::vector<std::string> &table_names, const vector<Value>& prefix,
