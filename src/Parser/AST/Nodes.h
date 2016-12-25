@@ -135,7 +135,7 @@ public:
             else BOOST_ASSERT(0);
         }else if(type == "int"){
             std::string v_str(5, '\0');
-            v_str.replace(v_str.begin(), v_str.begin() + 4, std::string((char*)&(iVal), (char*)(&(iVal)+ 4)));
+            v_str.replace(v_str.begin(), v_str.begin() + 4, std::string((char*)&(iVal), (char*)&(iVal)+ 4));
             return v_str;
         }else if(type == "varchar"){
             return strVal + std::string(1, '\0');

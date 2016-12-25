@@ -338,6 +338,18 @@ json Statement::exec() {
                     v_str = v->strVal + string(1,0);
                 item.push_back(v_str);
                 //TODO special check
+                string curCol = td->col_name[i];
+                if (curCol.size() > 3 && curCol.substr(curCol.size() - 3, 3) == "_id") {
+                    string otherTableName = curCol.substr(0, curCol.size() - 3);
+                    auto otherTd = TableManager::getInstance()->getTableDescription(otherTableName);
+                    int indexColId = otherTd->getColIdOfIndex("id");
+                    if (otherTd == nullptr || indexColId < 0) {
+                        return json({{"result", "Foreign key constraint violation."}});
+                    }
+                    auto result = otherTd->selectUseIndex(indexColId, v_str);
+                    if (result.size() == 0)
+                        return json({{"result", "Foreign key constraint violation."}});
+                }
             }
             if(td->insertInTable(item))
                 return json({{"result", "Succeed."}});
@@ -422,9 +434,66 @@ json Statement::exec() {
     }else if (type == CreateIdx){
         if(!TableManager::getInstance()->hasDB())
             return json({{"result", "No Database was specified."}});
+        // 1. has index
+        string tableName = ch[0]->strVal;
+        string colName = ch[1]->strVal;
+        auto indexName = TableManager::createIndexName(tableName, colName);
+        auto td = TableManager::getInstance()->getTableDescription(tableName);
+        BOOST_ASSERT(td != nullptr);
+        bool colFound = false;
+        int colId = 0;
+        for (int i = 0; i < td->col_name.size(); ++i) {
+            if (td->col_name[i] == colName) {
+                if (td->col_has_index[i]) {
+                    return json({{"result", "Index already exists."}});
+                }
+                td->col_has_index[i] = true;
+                // 2. write back
+//                TableManager::getInstance()->writeBackTableDescription(tableName, td);
+                colFound = true;
+                colId = i;
+                break;
+            }
+        }
+        if (!colFound) {
+            return json({{"result", "Column name does not exists."}});
+        }
+
+        // 3. create index file
+        TheBTree::BT::setupBTree(indexName);
+        shared_ptr<TheBTree> btree(new TheBTree(indexName));
+
+        // 4. select and insert index
+        td->traverseWithLocation([btree, colId](const Item &item, Location loc) -> void {
+            btree->insert(std::hash<std::string>()(item[colId]), btree->locationToString(loc), false);
+        });
+
     }else if (type == DropIdx){
         if(!TableManager::getInstance()->hasDB())
             return json({{"result", "No Database was specified."}});
+        string tableName = ch[0]->strVal;
+        string colName = ch[1]->strVal;
+        auto indexName = TableManager::createIndexName(tableName, colName);
+        auto td = TableManager::getInstance()->getTableDescription(tableName);
+        BOOST_ASSERT(td != nullptr);
+        bool colFound = false;
+        for (int i = 0; i < (int)td->col_name.size(); ++i) {
+            if (td->col_name[i] == colName) {
+                if (!td->col_has_index[i]) {
+                    return json({{"result", "Index does not exists."}});
+                }
+                td->col_has_index[i] = false;
+                // 2. write back
+                colFound = true;
+                break;
+            }
+        }
+        if (!colFound) {
+            return json({{"result", "Column name does not exists."}});
+        }
+        FileUtils fu;
+        fu.deleteFile((TableManager::getInstance()->base_dir + "/" + indexName).c_str());
+        return json({{"result", "Success"}});
     }
     return nullptr;
 }

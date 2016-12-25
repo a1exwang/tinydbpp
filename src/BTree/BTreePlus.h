@@ -109,6 +109,10 @@ public:
       return ptrsUpdated;
     });
   }
+
+  std::string locationToString(Location loc) {
+    return btree.locationToString(loc);
+  }
 private:
   BT btree;
 };

@@ -16,6 +16,7 @@
 #include <functional>
 #include <BTree/TheBTree.h>
 namespace tinydbpp {
+        class Location;
         typedef std::vector< std::string> Item;
         typedef std::function<bool(const Item &)> Checker;
         typedef std::function<void(Item &)> Changer;
@@ -43,6 +44,8 @@ namespace tinydbpp {
             std::vector< Item > deleteAndCollectUseIndex(int offset, std::string v,const Checker &checker = nullptr);
             void updateItems(Checker &checker,Changer &changer);
             std::vector< Item > selectUseChecker(Checker &checker);
+            void traverseWithLocation(std::function<void(const Item &item, Location)> callback);
+            int getColIdOfIndex(const std::string &colName) const;
         };
 
     class TableManager {
@@ -81,6 +84,7 @@ namespace tinydbpp {
         bool changeDB(std::string db, bool auto_create = true);
         void createDB(std::string db);
         std::shared_ptr<TableDescription> getTableDescription(std::string);
+        void writeBackTableDescription(std::string tableName, std::shared_ptr<TableDescription> td);
         bool buildTable(std::string name, std::function<void(Pager *)> callback = nullptr);
         bool dropTable(std::string name);
         bool DropDB(std::string db);
