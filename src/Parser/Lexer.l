@@ -82,5 +82,5 @@
 "<>" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_NEQ; }
 "<=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_LEQ; }
 ">=" {  yylval.becomeBasicSymbol(yytext, yyleng);return Token::KW_GEQ; }
-. { BOOST_ASSERT(0);}
+. { throw TokenError("unknown token", yylval, yytext); }
 %%
