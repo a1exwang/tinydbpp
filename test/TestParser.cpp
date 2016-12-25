@@ -130,8 +130,9 @@ BOOST_AUTO_TEST_CASE(updateRecords) {
   ssin << "insert into T1 values (1, 't1_varchar1', 10),(2, 't1_varchar2', 20);"<<endl;
   ssin << "insert into T2 values (1, 't2_varchar1', 10),(2, 't2_varchar2', 20);"<<endl;
   ssin << "insert into T3 values (1, 't3_varchar1', 10),(2, 't3_varchar2', 20), (3, 't3_varchar3', 30);"<<endl;
-  ssin << "update T1 set p = 't1_varchar1_update' where id = 1;";
-  ssin << "select * from T1 where id = 1;" << endl;
+//  ssin << "update T1 set p = 't1_varchar1_update' where id = 1;";
+  ssin << "update T1 set id = 123 where id = 1;";
+  ssin << "select * from T1 where id <> 0;" << endl;
   BOOST_REQUIRE(parser.parse() == 0);
   BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
   auto stmts = dynamic_pointer_cast<ast::Statements>(node);
