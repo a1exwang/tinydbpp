@@ -140,7 +140,7 @@ std::shared_ptr<TheBTree> TableDescription::getIndex(int offset) {
     return make_shared<TheBTree>(TableManager::createIndexName(name, col_name[offset]));
 }
 
-void TableDescription::updateItems(const std::vector< Item > & deleted_items, Changer &changer) {
+void TableDescription::updateItems(std::vector< Item > & deleted_items, Changer &changer) {
     for(auto & item : deleted_items) {
         changer(item);
         insertInTable(item);

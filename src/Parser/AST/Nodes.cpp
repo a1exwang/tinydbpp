@@ -12,6 +12,7 @@
 #include <cmath>
 #include <BTree/BTreePlus.h>
 #include <config.h>
+#include <ParsingError.h>
 using namespace std;
 using namespace tinydbpp;
 using namespace tinydbpp::ast;
@@ -247,240 +248,249 @@ WhereClause WhereClause::assign(const std::string &table_name, const Item &item)
 }
 
 json Statement::exec() {
-    if(type == ShowDbs){
-        TableManager::getInstance(); // create base dir
-        auto file_name_list = FileUtils::listFiles(TableManager::base_dir.c_str());
-        return json({{"result" , file_name_list}});
-    }else if(type == CreateDb){
-        TableManager::getInstance()->createDB(ch[0]->strVal);
-        return json({{"result", "Succeed."}});
-    }else if(type == DropDb){
-        if(TableManager::getInstance()->DropDB(ch[0]->strVal))
+    try {
+        if (type == ShowDbs) {
+            TableManager::getInstance(); // create base dir
+            auto file_name_list = FileUtils::listFiles(TableManager::base_dir.c_str());
+            return json({{"result", file_name_list}});
+        } else if (type == CreateDb) {
+            TableManager::getInstance()->createDB(ch[0]->strVal);
             return json({{"result", "Succeed."}});
-        else return json({{"result", "No such Database."}});
-    }else if(type == UseDb){
-        if(TableManager::getInstance()->changeDB(ch[0]->strVal, false))
-            return json({{"result", "Succeed."}});
-        else
-            return json({{"result", "No such Database."}});
-    }else if(type == ShowTables){
-        if(TableManager::getInstance()->hasDB()){
-            vector<string> ret;
-            auto file_name_list = FileUtils::listFiles(TableManager::getInstance()->dir.c_str());
-            for(auto & str : file_name_list)
-                if(str.find("_") == str.npos && str != SYS_TABLE_NAME)
-                {
-                    ret.push_back(str);
-                }
-            return json({{"result", ret}});
-        }else return json({{"result", "No Database was specified."}});
-    }else if(type == CreateTable){
-        if(TableManager::getInstance()->hasDB()){
-            auto fl = std::dynamic_pointer_cast<FieldList>(ch[1]->getNode());
-            fl->checkPrimaryKey();
-            function<void(tinydbpp::Pager *)> writeScheme = [this, &fl](tinydbpp::Pager * ptr){
-                auto p = ptr->getPage(0);
-                char* buf = p->getBuf();
-                char size_str[20];
-                int num = 0;
-                for(auto &f : fl->vec)
-                    if(!f.is_primary_key_stmt)
-                        num++;
-                sprintf(size_str, "%d", num);
-                string tmp = string("    ") + size_str + " ";
-                for(auto &f : fl->vec){
-                    if(f.is_primary_key_stmt) continue;
-                    string pattern = f.type == "varchar"? "-1" : "5"; //bits to bytes +1 is null
-                    sprintf(size_str, "%d", f.size);
-                    //can null 0 not null 1
-                    tmp = tmp + f.name + " " + f.type + " " + pattern + " " + ((f.is_key | !f.can_null)? string("1 "):string("0 "))
-                          + (f.is_key? string("1 ") : string("0 ")) + size_str + " "; // unique
-
-                    // create index here
-                    auto indexName = TableManager::createIndexName(ch[0]->strVal, f.name);
-                    if(f.is_key)
-                        TheBTree::BT::setupBTree(indexName);
-                }
-                sprintf(buf, "%s" , tmp.c_str());
-                p->markDirty();
-                p->releaseBuf(buf);
-            };
-            if(TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme))
+        } else if (type == DropDb) {
+            if (TableManager::getInstance()->DropDB(ch[0]->strVal))
                 return json({{"result", "Succeed."}});
-            else return json({{"result", "Create table failed."}});
-        }else return json({{"result", "No Database was specified."}});
-    }else if(type == DropTable){
-        if(!TableManager::getInstance()->dropTable(ch[0]->strVal))
-            return json({{"result", "There's no this table."}});
-    }else if(type == DesribeTable){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
-        if(td == nullptr) return json({{"result", "There's no this table."}});
-        return json({{"result", {{"name", td->col_name}, {"type", td->col_type}, {"pattern", td->pattern},
-                     {"not null", td->col_not_null}, {"unique", td->col_unique}, {"has index", td->col_has_index},{"width", td->col_width}} }});
-    }else if(type == InsertItem){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        auto vlists = dynamic_pointer_cast<ValueLists>(ch[1]->getNode());
-        auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
-        for(auto & vlist : vlists->vec){
-            if(vlist->vec.size() != td->col_name.size()) return json({{"result", "Wrong Dimension."}});
-            vector<string> item;
-            for(int i = 0;i < vlist->vec.size();i++) {
-                string v_str(td->pattern[i] > 0? td->pattern[i] : 1, 0);
-                auto v = vlist->vec[i];
-                if(v->type == "NULL")
-                    *(v_str.end() - 1) = 1;
-                else if(v->type == "int")
-                    v_str.replace(v_str.begin(), v_str.begin() + 4, string((char*)&(v->iVal), (char*)&(v->iVal) + 4));
-                else if(v->type == "varchar")
-                    v_str = v->strVal + string(1,0);
-                item.push_back(v_str);
-                //TODO special check
-            }
-            if(!td->insertInTable(item))
-                return json({{"result", "Insert failed."}});
-        }
-        return json({{"result", "Succeed."}});
-    }else if (type == UpdateItem){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        vector<string> tables({ch[0]->strVal});
-        bool can_index;
-        int col_offset;
-        string v;
-        auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
-        string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
-        auto checker = where->getChecker(table_name);
-        auto td = TableManager::getInstance()->getTableDescription(table_name);
-        Changer changer = dynamic_pointer_cast<SetClause>(ch[1]->getNode())->getChanger(table_name);
-        if(can_index){
-          td->updateItems(td->deleteAndCollectUseIndex(col_offset, v, checker), changer);
-        }else
-            td->updateItems(td->deleteAndCollectItems(checker), changer);
-        return json({{"result", "Finished."}});
-    }else if (type == DeleteItem){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        vector<string> tables({ch[0]->strVal});
-        bool can_index;
-        int col_offset;
-        string v;
-        auto where = dynamic_pointer_cast<WhereClause>(ch[1]->getNode());
-        string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
-        auto checker = where->getChecker(table_name);
-        auto td = TableManager::getInstance()->getTableDescription(table_name);
-        if(can_index){
-            td->deleteAndCollectUseIndex(col_offset, v, checker);
-        }else
-            td->deleteAndCollectItems(checker);
-        return json({{"result", "Finished."}});
-    }else if (type == SelectItem){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        vector<string> tables  = dynamic_pointer_cast<TableList>(ch[1]->getNode())->tables;
-        auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
-        auto scols = dynamic_pointer_cast<SelectCols>(ch[0]->getNode());
-        auto selector = scols->getSelector(tables);
-        vector< vector<Value> > ans;
-        vector< string > assigned_tables(tables.size(), "");
-        where->dfs(ans, tables, vector<Value>(), selector, assigned_tables);
-        vector<string> assigned_cols;
-        for(int k = (int)assigned_tables.size()-1;k >= 0;k --) {
-            auto ts = assigned_tables[k];
-            if (scols->isAll)
-            {
-                auto td = TableManager::getInstance()->getTableDescription(ts);
-                for(auto & col : td->col_name)
-                    assigned_cols.push_back(td->name + "_" + col);
-            }
+            else return json({{"result", "No such Database."}});
+        } else if (type == UseDb) {
+            if (TableManager::getInstance()->changeDB(ch[0]->strVal, false))
+                return json({{"result", "Succeed."}});
             else
-                for (auto &name : scols->col_list->cols) {
-                    string table, col;
-                    ColList::split(name, tables[0], table, col);
-                    if (table == ts)
-                        assigned_cols.push_back(name);
+                return json({{"result", "No such Database."}});
+        } else if (type == ShowTables) {
+            if (TableManager::getInstance()->hasDB()) {
+                vector<string> ret;
+                auto file_name_list = FileUtils::listFiles(TableManager::getInstance()->dir.c_str());
+                for (auto &str : file_name_list)
+                    if (str.find("_") == str.npos && str != SYS_TABLE_NAME) {
+                        ret.push_back(str);
+                    }
+                return json({{"result", ret}});
+            } else return json({{"result", "No Database was specified."}});
+        } else if (type == CreateTable) {
+            if (TableManager::getInstance()->hasDB()) {
+                auto fl = std::dynamic_pointer_cast<FieldList>(ch[1]->getNode());
+                fl->checkPrimaryKey();
+                function<void(tinydbpp::Pager *)> writeScheme = [this, &fl](tinydbpp::Pager *ptr) {
+                    auto p = ptr->getPage(0);
+                    char *buf = p->getBuf();
+                    char size_str[20];
+                    int num = 0;
+                    for (auto &f : fl->vec)
+                        if (!f.is_primary_key_stmt)
+                            num++;
+                    sprintf(size_str, "%d", num);
+                    string tmp = string("    ") + size_str + " ";
+                    for (auto &f : fl->vec) {
+                        if (f.is_primary_key_stmt) continue;
+                        string pattern = f.type == "varchar" ? "-1" : "5"; //bits to bytes +1 is null
+                        sprintf(size_str, "%d", f.size);
+                        //can null 0 not null 1
+                        tmp = tmp + f.name + " " + f.type + " " + pattern + " " +
+                              ((f.is_key | !f.can_null) ? string("1 ") : string("0 "))
+                              + (f.is_key ? string("1 ") : string("0 ")) + size_str + " "; // unique
+
+                        // create index here
+                        auto indexName = TableManager::createIndexName(ch[0]->strVal, f.name);
+                        if (f.is_key)
+                            TheBTree::BT::setupBTree(indexName);
+                    }
+                    sprintf(buf, "%s", tmp.c_str());
+                    p->markDirty();
+                    p->releaseBuf(buf);
+                };
+                if (TableManager::getInstance()->buildTable(ch[0]->strVal, writeScheme))
+                    return json({{"result", "Succeed."}});
+                else return json({{"result", "Create table failed."}});
+            } else return json({{"result", "No Database was specified."}});
+        } else if (type == DropTable) {
+            if (!TableManager::getInstance()->dropTable(ch[0]->strVal))
+                return json({{"result", "There's no this table."}});
+        } else if (type == DesribeTable) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
+            if (td == nullptr) return json({{"result", "There's no this table."}});
+            return json({{"result", {{"name", td->col_name}, {"type", td->col_type}, {"pattern", td->pattern},
+                                            {"not null", td->col_not_null}, {"unique", td->col_unique}, {"has index", td->col_has_index}, {"width", td->col_width}}}});
+        } else if (type == InsertItem) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            auto vlists = dynamic_pointer_cast<ValueLists>(ch[1]->getNode());
+            auto td = TableManager::getInstance()->getTableDescription(ch[0]->strVal);
+            for (auto &vlist : vlists->vec) {
+                if (vlist->vec.size() != td->col_name.size()) return json({{"result", "Wrong Dimension."}});
+                vector<string> item;
+                for (int i = 0; i < vlist->vec.size(); i++) {
+                    string v_str(td->pattern[i] > 0 ? td->pattern[i] : 1, 0);
+                    auto v = vlist->vec[i];
+                    if (v->type == "NULL")
+                        *(v_str.end() - 1) = 1;
+                    else if (v->type == "int")
+                        v_str.replace(v_str.begin(), v_str.begin() + 4,
+                                      string((char *) &(v->iVal), (char *) &(v->iVal) + 4));
+                    else if (v->type == "varchar")
+                        v_str = v->strVal + string(1, 0);
+                    item.push_back(v_str);
+                    //TODO special check
                 }
-        }
-        json ret;
-        for(int i = 0;i < assigned_cols.size();i++) {
-            auto a = json::array();
-            for (auto &item : ans) {
-                if(item[i].type == "int")
-                    a.push_back(item[i].iVal);
-                else if(item[i].type == "varchar")
-                    a.push_back(item[i].strVal);
-                else if(item[i].type == "NULL")
-                    a.push_back("NULL");
-                else BOOST_ASSERT(0);
+                if (!td->insertInTable(item))
+                    return json({{"result", "Insert failed."}});
             }
-            ret["result"][assigned_cols[i]] = a;
-        }
-        return ret;
-
-    }else if (type == CreateIdx){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        // 1. has index
-        string tableName = ch[0]->strVal;
-        string colName = ch[1]->strVal;
-        auto indexName = TableManager::createIndexName(tableName, colName);
-        auto td = TableManager::getInstance()->getTableDescription(tableName);
-        BOOST_ASSERT(td != nullptr);
-        bool colFound = false;
-        int colId = 0;
-        for (int i = 0; i < td->col_name.size(); ++i) {
-            if (td->col_name[i] == colName) {
-                if (td->col_has_index[i]) {
-                    return json({{"result", "Index already exists."}});
+            return json({{"result", "Succeed."}});
+        } else if (type == UpdateItem) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            vector<string> tables({ch[0]->strVal});
+            bool can_index;
+            int col_offset;
+            string v;
+            auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
+            string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
+            auto checker = where->getChecker(table_name);
+            auto td = TableManager::getInstance()->getTableDescription(table_name);
+            Changer changer = dynamic_pointer_cast<SetClause>(ch[1]->getNode())->getChanger(table_name);
+            vector <Item> deleted_items;
+            if (can_index) {
+                deleted_items = td->deleteAndCollectUseIndex(col_offset, v, checker);
+                td->updateItems(deleted_items, changer);
+            } else {
+                deleted_items = td->deleteAndCollectItems(checker);
+                td->updateItems(deleted_items, changer);
+            }
+            return json({{"result", "Finished."}});
+        } else if (type == DeleteItem) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            vector<string> tables({ch[0]->strVal});
+            bool can_index;
+            int col_offset;
+            string v;
+            auto where = dynamic_pointer_cast<WhereClause>(ch[1]->getNode());
+            string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
+            auto checker = where->getChecker(table_name);
+            auto td = TableManager::getInstance()->getTableDescription(table_name);
+            if (can_index) {
+                td->deleteAndCollectUseIndex(col_offset, v, checker);
+            } else
+                td->deleteAndCollectItems(checker);
+            return json({{"result", "Finished."}});
+        } else if (type == SelectItem) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            vector<string> tables = dynamic_pointer_cast<TableList>(ch[1]->getNode())->tables;
+            auto where = dynamic_pointer_cast<WhereClause>(ch[2]->getNode());
+            auto scols = dynamic_pointer_cast<SelectCols>(ch[0]->getNode());
+            auto selector = scols->getSelector(tables);
+            vector<vector<Value> > ans;
+            vector<string> assigned_tables(tables.size(), "");
+            where->dfs(ans, tables, vector<Value>(), selector, assigned_tables);
+            vector<string> assigned_cols;
+            for (int k = (int) assigned_tables.size() - 1; k >= 0; k--) {
+                auto ts = assigned_tables[k];
+                if (scols->isAll) {
+                    auto td = TableManager::getInstance()->getTableDescription(ts);
+                    for (auto &col : td->col_name)
+                        assigned_cols.push_back(td->name + "_" + col);
+                } else
+                    for (auto &name : scols->col_list->cols) {
+                        string table, col;
+                        ColList::split(name, tables[0], table, col);
+                        if (table == ts)
+                            assigned_cols.push_back(name);
+                    }
+            }
+            json ret;
+            for (int i = 0; i < assigned_cols.size(); i++) {
+                auto a = json::array();
+                for (auto &item : ans) {
+                    if (item[i].type == "int")
+                        a.push_back(item[i].iVal);
+                    else if (item[i].type == "varchar")
+                        a.push_back(item[i].strVal);
+                    else if (item[i].type == "NULL")
+                        a.push_back("NULL");
+                    else
+                        BOOST_ASSERT(0);
                 }
-                td->col_has_index[i] = true;
-                // 2. write back
-                colFound = true;
-                colId = i;
-                break;
+                ret["result"][assigned_cols[i]] = a;
             }
-        }
-        if (!colFound) {
-            return json({{"result", "Column name does not exists."}});
-        }
+            return ret;
 
-        // 3. create index file
-        TheBTree::BT::setupBTree(indexName);
-        shared_ptr<TheBTree> btree(new TheBTree(indexName));
-
-        // 4. select and insert index
-        td->traverseWithLocation([btree, colId](const Item &item, Location loc) -> void {
-            btree->insert(std::hash<std::string>()(item[colId]), btree->locationToString(loc), false);
-        });
-
-    }else if (type == DropIdx){
-        if(!TableManager::getInstance()->hasDB())
-            return json({{"result", "No Database was specified."}});
-        string tableName = ch[0]->strVal;
-        string colName = ch[1]->strVal;
-        auto indexName = TableManager::createIndexName(tableName, colName);
-        auto td = TableManager::getInstance()->getTableDescription(tableName);
-        BOOST_ASSERT(td != nullptr);
-        bool colFound = false;
-        for (int i = 0; i < (int)td->col_name.size(); ++i) {
-            if (td->col_name[i] == colName) {
-                if (!td->col_has_index[i]) {
-                    return json({{"result", "Index does not exists."}});
+        } else if (type == CreateIdx) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            // 1. has index
+            string tableName = ch[0]->strVal;
+            string colName = ch[1]->strVal;
+            auto indexName = TableManager::createIndexName(tableName, colName);
+            auto td = TableManager::getInstance()->getTableDescription(tableName);
+            BOOST_ASSERT(td != nullptr);
+            bool colFound = false;
+            int colId = 0;
+            for (int i = 0; i < td->col_name.size(); ++i) {
+                if (td->col_name[i] == colName) {
+                    if (td->col_has_index[i]) {
+                        return json({{"result", "Index already exists."}});
+                    }
+                    td->col_has_index[i] = true;
+                    // 2. write back
+                    colFound = true;
+                    colId = i;
+                    break;
                 }
-                td->col_has_index[i] = false;
-                // 2. write back
-                colFound = true;
-                break;
             }
+            if (!colFound) {
+                return json({{"result", "Column name does not exists."}});
+            }
+
+            // 3. create index file
+            TheBTree::BT::setupBTree(indexName);
+            shared_ptr<TheBTree> btree(new TheBTree(indexName));
+
+            // 4. select and insert index
+            td->traverseWithLocation([btree, colId](const Item &item, Location loc) -> void {
+                btree->insert(std::hash<std::string>()(item[colId]), btree->locationToString(loc), false);
+            });
+
+        } else if (type == DropIdx) {
+            if (!TableManager::getInstance()->hasDB())
+                return json({{"result", "No Database was specified."}});
+            string tableName = ch[0]->strVal;
+            string colName = ch[1]->strVal;
+            auto indexName = TableManager::createIndexName(tableName, colName);
+            auto td = TableManager::getInstance()->getTableDescription(tableName);
+            BOOST_ASSERT(td != nullptr);
+            bool colFound = false;
+            for (int i = 0; i < (int) td->col_name.size(); ++i) {
+                if (td->col_name[i] == colName) {
+                    if (!td->col_has_index[i]) {
+                        return json({{"result", "Index does not exists."}});
+                    }
+                    td->col_has_index[i] = false;
+                    // 2. write back
+                    colFound = true;
+                    break;
+                }
+            }
+            if (!colFound) {
+                return json({{"result", "Column name does not exists."}});
+            }
+            FileUtils fu;
+            fu.deleteFile((TableManager::getInstance()->base_dir + "/" + indexName).c_str());
+            return json({{"result", "Success"}});
         }
-        if (!colFound) {
-            return json({{"result", "Column name does not exists."}});
-        }
-        FileUtils fu;
-        fu.deleteFile((TableManager::getInstance()->base_dir + "/" + indexName).c_str());
-        return json({{"result", "Success"}});
+    }catch(TypeError e)
+    {
+        return json({{"result", e.toString()}});
     }
     return nullptr;
 }
