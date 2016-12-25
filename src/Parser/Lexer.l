@@ -1,10 +1,10 @@
 %{
 #include <string>
 #include <boost/log/trivial.hpp>
-
+#include <regex>
 #include <Parser/Lexer.h>
 #include <Parser.tab.hpp>
-
+#include <iostream>
 // This is token enum in Bison, declared in bison as '%token IDENTIFIER'
 %}
 
@@ -50,8 +50,9 @@
 (?i:and) { yylval.becomeKeyword("and"); return Token::KW_AND; }
 (?i:like) { yylval.becomeKeyword("like"); return Token::KW_LIKE; }
 
-'[^']*' {
-    yylval.becomeStringLiteral(yytext, yyleng);
+'([^']|\\')*' {
+    std::string str = std::regex_replace(yytext, std::regex("\\\\'"), "'");
+    yylval.becomeStringLiteral(str.c_str(), str.size());
     BOOST_LOG_TRIVIAL(info) << "Lexer. String literal" <<  yytext;
     return Token::STRING;
 }
