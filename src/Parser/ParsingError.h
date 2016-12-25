@@ -20,6 +20,12 @@ private:
 };
 
 class TypeError : public std::runtime_error {
-
+public:
+    std::string type1, type2;
+    TypeError(const std::string & str, const std::string & t1, const std::string & t2): runtime_error(str), type1(t1), type2(t2){
+    }
+    virtual std::string toString() const {
+        return std::string("")
+    }
 };
 }

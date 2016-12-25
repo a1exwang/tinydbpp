@@ -351,10 +351,10 @@ json Statement::exec() {
                         return json({{"result", "Foreign key constraint violation."}});
                 }
             }
-            if(td->insertInTable(item))
-                return json({{"result", "Succeed."}});
-            else return json({{"result", "Insert failed."}});
+            if(!td->insertInTable(item))
+                return json({{"result", "Insert failed."}});
         }
+        return json({{"result", "Succeed."}});
     }else if (type == UpdateItem){
         if(!TableManager::getInstance()->hasDB())
             return json({{"result", "No Database was specified."}});
