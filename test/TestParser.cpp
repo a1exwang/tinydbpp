@@ -289,3 +289,23 @@ BOOST_AUTO_TEST_CASE(insertWithForeignKey) {
 //    cout << "result: " << s->exec() << endl;
 //  }
 //}
+
+BOOST_AUTO_TEST_CASE(testNull) {
+  stringstream ssin, ssout;
+  Lexer lexer(ssin, ssout);
+  shared_ptr<ast::Node> node;
+  Parser parser(lexer, node);
+  ssin << "create database test_testNotNull;" << endl;
+  ssin << "use database test_testNotNull;" << endl;
+  ssin << "create table customer ( id int(10), name varchar(10) not null, PRIMARY KEY  (id));"<<endl;
+  ssin << "insert into customer values (1, 'alex'),(2, 'bob');"<<endl;
+  ssin << "insert into customer values (3, null);"<<endl;
+  ssin << "select * from customer where id <> 0;"<<endl;
+  BOOST_REQUIRE(parser.parse() == 0);
+  BOOST_REQUIRE(dynamic_cast<ast::Statements *>(node.get()));
+  auto stmts = dynamic_pointer_cast<ast::Statements>(node);
+  auto ss = stmts->get();
+  for (auto &s: ss) {
+    cout << "result: " << s->exec() << endl;
+  }
+}
