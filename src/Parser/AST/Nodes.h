@@ -7,6 +7,7 @@
 #include <boost/assert.hpp>
 #include <RecordManage/TableManager.h>
 #include <string>
+#include <Parser/ParsingError.h>
 
 namespace tinydbpp {
 namespace ast {
@@ -128,7 +129,8 @@ public:
     }
     std::string toString(std::string req_type)
     {
-        BOOST_ASSERT(type == "NULL" || req_type == type);
+        if(type != "NULL" && req_type != type)
+            throw TypeError("TypeError", type, req_type);
         if(type == "NULL"){
             if(req_type == "varchar") return std::string(1, (char)1);
             else if(req_type == "varchar") return std::string(4, '\0') + std::string(1, (char)1);
@@ -203,6 +205,8 @@ public:
         for(int i = 0;i < cols.size();i++)
         {
             int offset = td->getOffset(cols[i]);
+            if(offset == -1)
+                throw NoThisColumnError(td->name, cols[i]);
             offsets.push_back(offset);
             embed_values.push_back(values[i].toString(td->col_type[offset]));
         }

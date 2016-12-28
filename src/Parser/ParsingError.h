@@ -29,6 +29,16 @@ public:
 
     }
 };
+class NoThisColumnError : public std::runtime_error {
+public:
+    std::string table_name, col_name;
+    NoThisColumnError(const std::string & t1, const std::string & t2): runtime_error("NoThisColumn"), table_name(t1), col_name(t2){
+    }
+    virtual std::string toString() const {
+        return std::string("Table ") + table_name + " has not a column named " + col_name + "!";
+
+    }
+};
 class DoubleFault :public std::runtime_error {
 public:
   DoubleFault(const std::string &str) :std::runtime_error(str) {
