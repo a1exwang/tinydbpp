@@ -287,7 +287,7 @@ namespace tinydbpp {
             int now = fixed? 2 : 0;
             while(now < (int)PAGER_PAGE_SIZE){
                 if(data[now] == 0)//free
-                    now += *(short*)(data + now + 1) + (fixed ? 5 : 3);
+                    now += *(short*)(data + now + 1) + (fixed ? 3 : 3);
                 else{//used
                     int this_loc = now;
                     now += fixed ? 1: 3;
