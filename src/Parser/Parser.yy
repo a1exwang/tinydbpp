@@ -92,7 +92,6 @@ table_stmt:  KW_CREATE KW_TABLE IDENTIFIER '(' fieldList ')'{
            }
            | KW_SELECT selector KW_FROM tableList KW_WHERE whereClause{
                 $$.makeSelectTbNode($2, $4, $6);
-                cout << "select " << dynamic_pointer_cast<ast::SelectCols>($2.getNode())->isAll << endl;
            }
 
 idx_stmt  :  KW_CREATE KW_INDEX IDENTIFIER '(' IDENTIFIER ')'{
