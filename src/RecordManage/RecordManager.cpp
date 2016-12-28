@@ -96,8 +96,8 @@ namespace tinydbpp {
                 dic_page = ptr->getPage(i);
                 dic = dic_page->getBuf();
                 index = 0;
-                continue;
             }
+            if(index == 0) continue;
             char state = dic[index];
             if( (fixed && (state & 1) == 0 && (state & 2) == 0) ||
                 (!fixed && (state & 1) == 1 && (state & 2) == 0) )
