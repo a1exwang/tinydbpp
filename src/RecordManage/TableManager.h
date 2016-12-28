@@ -71,7 +71,7 @@ namespace tinydbpp {
                 }
                 FileUtils::createDir(base_dir.c_str());
                 ins->dbname = "";
-                ins->changeDB(TEST_DATABASE_NAME, true);//TODO delete it, this is just for compatibility of previous unit tests
+//                ins->changeDB(TEST_DATABASE_NAME, true);//TODO delete it, this is just for compatibility of previous unit tests
                 return ins;
             } else return ins;
         }

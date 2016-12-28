@@ -78,17 +78,22 @@ Checker WhereClause::getChecker(std::string table_name) {
                     col2_name = string(exprs[i].strVal.begin() + pos + 1, exprs[i].strVal.end());
                 else continue;
             }
+            bool found = false;
             for(int j = 0;j < td->col_name.size();j++)
                 if(td->col_name[j] == col_name) {
+                    found = true;
                     check_ops[j] = ops[i], check_value[j] = exprs[i];
                     if(exprs[i].type == "col") {
                         //type : col, strVal : col_type, iVal: offset
                         check_value[j].strVal = td->col_type[j];
+                        bool ffound = false;
                         for (int k = 0; k < td->col_name.size(); k++)
                             if (td->col_name[k] == col2_name)
-                                check_value[j].iVal = k;
+                                check_value[j].iVal = k, ffound = true;
+                        if(!ffound) throw NoThisColumnError(td->name, col2_name);
                     }
                 }
+            if(!found) throw NoThisColumnError(td->name, col_name);
         }
     Checker ret = [check_ops, check_value](const Item& item)-> bool{
         for(int i = 0;i < check_ops.size();i++)
@@ -266,9 +271,6 @@ WhereClause WhereClause::assign(const std::string &table_name, const Item &item)
 void WhereClause::becomeLike(const std::string &colname, const string &regexp) {
     names.push_back(colname);
     ops.push_back("like");
-    string test = "abc def abc def";
-
-    test = regex_replace(regexp, std::regex("%"), "\\.\\*");
     string escapedRegexp;
     for (int i = 0; i < regexp.size(); ++i) {
         if (!(isdigit(regexp[i]) || isalpha(regexp[i]) || regexp[i] == '%' || regexp[i] == '_')) {
@@ -368,6 +370,8 @@ json Statement::exec() {
                 for (int i = 0; i < vlist->vec.size(); i++) {
                     string v_str(td->pattern[i] > 0 ? td->pattern[i] : 1, 0);
                     auto v = vlist->vec[i];
+                    if(td->col_type[i] != v->type && v->type != "NULL")
+                        throw TypeError("TypeError!",td->col_type[i], v->type);
                     if (v->type == "NULL")
                         *(v_str.end() - 1) = 1;
                     else if (v->type == "int")
@@ -414,11 +418,12 @@ json Statement::exec() {
             string table_name = where->getNextAssignTableName(can_index, col_offset, v, tables);
             auto checker = where->getChecker(table_name);
             auto td = TableManager::getInstance()->getTableDescription(table_name);
+            vector<Item> res;
             if (can_index) {
-                td->deleteAndCollectUseIndex(col_offset, v, checker);
+                res = td->deleteAndCollectUseIndex(col_offset, v, checker);
             } else
-                td->deleteAndCollectItems(checker);
-            return json({{"result", "Finished."}});
+                res = td->deleteAndCollectItems(checker);
+            return json({{"result", res}});
         } else if (type == SelectItem) {
             if (!TableManager::getInstance()->hasDB())
                 return json({{"result", "No Database was specified."}});
@@ -429,6 +434,7 @@ json Statement::exec() {
             vector<vector<Value> > ans;
             vector<string> assigned_tables(tables.size(), "");
             where->dfs(ans, tables, vector<Value>(), selector, assigned_tables);
+            cout << "Select Finished! Dumping results to JSON..." <<endl;
             vector<string> assigned_cols;
             for (int k = (int) assigned_tables.size() - 1; k >= 0; k--) {
                 auto ts = assigned_tables[k];
@@ -526,6 +532,8 @@ json Statement::exec() {
         }
     }catch(TypeError e)
     {
+        return json({{"result", e.toString()}});
+    }catch(NoThisColumnError e){
         return json({{"result", e.toString()}});
     }
     return nullptr;
