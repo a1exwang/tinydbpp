@@ -165,7 +165,8 @@ std::string WhereClause::getNextAssignTableName(bool &can_index, int &col_index,
             for(;j < td->col_name.size();j++)
                 if(td->col_name[j] == col_name)
                     break;
-            BOOST_ASSERT(j < td->col_name.size());
+            if(j >= td->col_name.size())
+                throw NoThisColumnError(td->name, col_name);
             if(td->col_has_index[j])
             {
                 can_index = true;
