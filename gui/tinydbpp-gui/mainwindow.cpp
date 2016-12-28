@@ -99,8 +99,17 @@ void MainWindow::btnExecClicked() {
 
         int lineNo = 1;
         for (auto innerIt = it.value().begin(); innerIt != it.value().end(); ++innerIt) {
-          string itemStr = *innerIt;
-          ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
+          if (innerIt->is_string()) {
+            string itemStr = *innerIt;
+            ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(itemStr.c_str()));
+          }
+          else if (innerIt->is_number()) {
+            int itemInt = *innerIt;
+            stringstream ss;
+            ss << itemInt;
+            ui->tableResult->setItem(lineNo, colNo, new QTableWidgetItem(ss.str().c_str()));
+
+          }
           lineNo++;
         }
         colNo++;
