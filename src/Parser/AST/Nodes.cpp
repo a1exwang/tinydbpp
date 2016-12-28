@@ -452,18 +452,24 @@ json Statement::exec() {
                     }
             }
             json ret;
+            int t = 0;
             for (int i = 0; i < assigned_cols.size(); i++) {
+                string table, col;
+                ColList::split(assigned_cols[i], "", table, col);
+                auto td = TableManager::getInstance()->getTableDescription(table);
                 auto a = json::array();
+                int j = td->getOffset(col) + t;
                 for (auto &item : ans) {
-                    if (item[i].type == "int")
-                        a.push_back(item[i].iVal);
-                    else if (item[i].type == "varchar")
-                        a.push_back(item[i].strVal);
-                    else if (item[i].type == "NULL")
+                    if (item[j].type == "int")
+                        a.push_back(item[j].iVal);
+                    else if (item[j].type == "varchar")
+                        a.push_back(item[j].strVal);
+                    else if (item[j].type == "NULL")
                         a.push_back("NULL");
                     else
                         BOOST_ASSERT(0);
                 }
+                t += td->col_name.size();
                 ret["result"][assigned_cols[i]] = a;
             }
             return ret;
