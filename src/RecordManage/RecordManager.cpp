@@ -53,6 +53,7 @@ namespace tinydbpp {
                 *(short*)(data + free_loc + 3) = *(short*)(data + this_loc + 3);//next
                 *(short*)(data + free_loc + 1) = len - (short)1 - (short)record.length();//length
             }
+            BOOST_ASSERT(this_loc + 1 + record.length() <= PAGER_PAGE_SIZE);
             memcpy(data + this_loc + 1, record.c_str(), record.length());
             *(data + this_loc) = 1;
             data_page->markDirty();
@@ -63,6 +64,7 @@ namespace tinydbpp {
             while(now + 3 < (int)PAGER_PAGE_SIZE){
                 short len = *(short*)(data + now + 1);
                 if(*(data + now) == 0 && (len >= record.length() + 3 || len == record.length())){
+                    BOOST_ASSERT(now + 3 + record.length() <= PAGER_PAGE_SIZE);
                     memcpy(data + now + 3, record.c_str(), record.length());
                     *(short*)(data + now + 1) = (short)record.length();
                     *(data + now) = 1;
@@ -158,6 +160,7 @@ namespace tinydbpp {
             if(fixed && fixed_res){
                 shared_ptr<Page> p = ptr->getPage(pageID);
                 char * data = p->getBuf();
+                BOOST_ASSERT(now + 1 + res.length() <= PAGER_PAGE_SIZE);
                 memcpy(data + now + 1, res.c_str(), res.length());
                 p->markDirty();
                 p->releaseBuf(data);
@@ -185,6 +188,7 @@ namespace tinydbpp {
       if (fixed && fixed_res) {
         shared_ptr<Page> p = ptr->getPage((uint32_t) loc.pageNumber);
         char *data = p->getBuf();
+        BOOST_ASSERT(loc.loc + 1 + res.length() <= PAGER_PAGE_SIZE);
         memcpy(data + loc.loc + 1, res.c_str(), res.length());
         p->markDirty();
         p->releaseBuf(data);
@@ -317,7 +321,7 @@ namespace tinydbpp {
         // TODO: currently, we don't support fixed length record.
         BOOST_ASSERT(!fixed);
         uint16_t length = *(uint16_t*)(data + loc.loc + 1);
-        BOOST_ASSERT(loc.loc + 3 + length < (int)PAGER_PAGE_SIZE);
+        BOOST_ASSERT(loc.loc + 3 + length <= (int)PAGER_PAGE_SIZE);
         auto ret = string(data + loc.loc + 3, length);
         p->releaseBuf(data);
         return ret;
@@ -361,7 +365,7 @@ namespace tinydbpp {
         // TODO: currently, we don't support fixed length record.
         BOOST_ASSERT(!fixed);
         uint16_t length = *(uint16_t*)(data + loc.loc + 1);
-        BOOST_ASSERT(loc.loc + 3 + length < (int)PAGER_PAGE_SIZE);
+        BOOST_ASSERT(loc.loc + 3 + length <= (int)PAGER_PAGE_SIZE);
         auto record = string(data + loc.loc + 3, length);
         if (callback(record)) {
             BOOST_ASSERT_MSG(record.size() == length, "This function does not support resize!");

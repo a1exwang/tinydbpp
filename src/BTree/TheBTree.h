@@ -2,7 +2,7 @@
 
 namespace tinydbpp {
 
-template<typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
+template<typename KeyT, size_t BRankMin, size_t BRankMax>
 class BTreePlus;
-typedef BTreePlus<size_t, 2, 3> TheBTree;
+typedef BTreePlus<size_t, 3, 5> TheBTree;
 }

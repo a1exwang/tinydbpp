@@ -13,9 +13,19 @@ using namespace tinydbpp;
 using namespace std;
 
 TestUtils utils;
-constexpr size_t MIN = 2;
-constexpr size_t MAX = 3;
+constexpr size_t MIN = 3;
+constexpr size_t MAX = 5;
 typedef BTreePlus<uint32_t, MIN, MAX> TBTree;
+BOOST_AUTO_TEST_CASE(insertBtreeOneKey) {
+  TableManager::getInstance()->changeDB("Test");
+  string tableName = "insertBtreePlusOneKey";
+  boost::filesystem::remove("database/Test/" + tableName);
+  TBTree::BT::setupBTree(tableName);
+
+  TBTree btree(tableName);
+
+  btree.insert(1, "1A", false);
+}
 
 BOOST_AUTO_TEST_CASE(insertBtreeMultipleKey) {
   TableManager::getInstance()->changeDB("Test");

@@ -26,7 +26,7 @@ constexpr unsigned int LocLength = sizeof(uint32_t) + sizeof(uint16_t);
  *              copy constructor, assignment operator, < operator
  *
  */
-template <typename KeyT, size_t BRankMin = 2, size_t BRankMax = 3>
+template <typename KeyT, size_t BRankMin, size_t BRankMax>
 class BTree {
 public:
   class BTreeError :public std::exception {
@@ -260,8 +260,7 @@ public:
      *  It's enough!
      * @return
      */
-#pragma pack(1)
-    struct _NodeFormat {
+    typedef struct _NodeFormat {
       uint8_t nKeyCount;
       uint8_t isLeaf;
       uint32_t parentPgNo;
@@ -272,7 +271,6 @@ public:
         uint16_t pgOff;
       } children[BRankMax];
     };
-#pragma pack()
 //    /**
 //     * _NodeFormat is larger than _LeafNodeFormat
 //     */
@@ -505,7 +503,7 @@ public:
       return 0;
     }
     void initFromBuf(const std::string &buf) {
-      BOOST_ASSERT(buf.size() == sizeof(typename BTree<KeyT>::Node::_NodeFormat));
+      BOOST_ASSERT(buf.size() == sizeof(typename BTree<KeyT, BRankMin, BRankMax>::Node::_NodeFormat));
       _NodeFormat *nf = (_NodeFormat*)buf.c_str();
       this->isLeaf = nf->isLeaf;
 
@@ -904,7 +902,8 @@ public:
     auto buf = page0->getBuf();
     _Page0 *pg0 = (_Page0*) buf;
     BOOST_ASSERT_MSG(pg0->magic == BTREE_FILE_MAGIC_NUMBER, "This file is not a btree file!");
-    BOOST_ASSERT_MSG(sizeof(typename Node::_NodeFormat) == pg0->nodeSize, "NodeSize unmatched! This file might be for another index!");
+    int a = sizeof(typename BTree<KeyT, BRankMin, BRankMax>::Node::_NodeFormat);
+    BOOST_ASSERT_MSG(sizeof(typename BTree<KeyT, BRankMin, BRankMax>::Node::_NodeFormat) == pg0->nodeSize, "NodeSize unmatched! This file might be for another index!");
     uint32_t pgNo = pg0->rootNodePgNo;
     uint32_t pgOff = pg0->rootNodeOff;
     page0->releaseBuf(buf);
