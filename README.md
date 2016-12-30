@@ -6,6 +6,7 @@ A simple single user, single thread, file-based SQL database implemented in C++ 
   - gcc 4.8+
   - boost 1.54+
   - pthread
+  - QT5+
 
 ## Build
 
@@ -21,6 +22,11 @@ A simple single user, single thread, file-based SQL database implemented in C++ 
   
   # To run a test
   test/testXXX
+  
+  # To run Command line interface
+  src/cli
+  # To run graphical user interface
+  gui/tinydbpp-gui/tinydbpp-gui
 ```
 
 ## Design
