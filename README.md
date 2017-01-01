@@ -92,3 +92,12 @@ A Class `TableDescription` records tables' schema and encapsulate table's operat
 This layer is responsible for parsing the query string and dealing with the query. 
 ##### Flex & Bison
 We use Flex and Bison to do lexical analysis and grammatical analysis. 
+##### Query
+The class `Statement` has a property `type` to represent its query type. Virtual function `exec` will execute the statement.
+- Selection optimization is based on the principle `using index as possible`. We consider many situations such as `table1.col1 = table2.col1` and one of them has index or there's other constrains which can not use index but once enumerating this column, another column can use index and so on ...
+- Multiple tables joining is supported by implementing a `DFS` based selection method. We recursively find out which table should be enumerated or selected using index and assign the value to get a new `WhereClause` and new `Checker`.
+- Approximate matching //TODO
+
+####Work Division
+- 丁铭负责了记录管理模块、系统管理模块和大部分查询解析模块代码和小部分测试代码。
+- 王奥丞负责底层页式文件系统、索引模块、图形化界面、小部分查询解析模块代码和大部分测试代码。
