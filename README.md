@@ -33,6 +33,7 @@ A simple single user, single thread, file-based SQL database implemented in C++ 
 Tinydbpp is designed as multiple layers(like SQLite)
 Each layer depends only on its lower layers.
 
+![](pic/database.png)
 Main goals for each layer.
 #### Pager 
 Provide a pager with which user can transparently CRUD(create/read/update/delete) a cached page.
@@ -52,5 +53,42 @@ Sample:
 ```
 
 #### Record
+Provide APIs for basic operations on a record. The Record are categoried as "fixed" and "not-fixed", which means whether it contains a "varchar" column and the length of the data in the column is longer than DEFAULT_VARCHAR_LEN.
+##### Storage Structure
+- Page(0) in a file, which represents a table, records the schema of the table.
+- Page(1), Page(4098), Page(4097k + 1) is dictionary pages. 4097 pages is an extent. Every bytes in the dictionary page records the state (is fixed? is full?...) of its relevant data page.
+- Fixed pages use a linked list to record the blank places. This method can help us insert a record into a page quickly. 
+![](pic/fixed.png)
+- Not-fixed pages use a relatively simple structure. A length of record is saved ahead.
+- More details are in [Model.md](Model.md).
+##### Basic Operation
+- Insert. Inserting an "item" into table must specified "fixed" or "not-fixed", we will find a blank page to record and return the location.  
+- Update. This method takes lambda functions "Changer" and "Checker" as parameters. Checker can tell us whether the record should be updated meanwhile the "Changer" can update an item. This method will scan all the tables to get results.
+- UpdateOneRecord. Update the record at given location.
+- Delete. This method takes lambda functions "Solver" and "Checker" as parameters. Checker can tell us whether the record should be deleted meanwhile the "Solver" can deal with the selected items for example collecting. This method will scan all the tables to get results.
+- DeleteOneRecord. Delete the record at given location.
+- Select. This method takes lambda functions "Solver" and "Checker" as parameters. Checker can tell us whether the record should be selected meanwhile the "Solver" can deal with the selected items for example collecting. This method will scan all the tables to get results.
+- SelectOneRecord. Select the record at given location.
 #### BTree
-    
+
+#### TableManager
+This layer is responsible for manage databases and tables. Nevertheless, it encapsulate operations on records and index.
+##### Entities Identification
+We use a low-coupling method the identify databases, tables, and index. Every database is a directory and every table is a file. The files named `(.+)\.(.+)` will be recognized as an index file.
+
+Every time the program is started, it will scan the directory's structure and identifies these entities's information.
+##### Table Operations
+A Class `TableDescription` records tables' schema and encapsulate table's operations. Some extra functions of the system such as `foreign key's constrain、propreties' constrain ` are implemented in this layer. When we insert or update in a table, we should check foreign key's tables for feasibility.
+- embed. Embed a list of properties into a binary string.
+- read. Expand a binary string to a list of properties.
+- InsertInTable. All kinds of constrains are taken into consideration.
+- UpdateItems. 
+- SelectUseIndex.
+- SelectUseChecker.
+- DeleteAndCollectItemsUseIndex.
+- DeleteAndCollectItemsUseChecker.
+
+#### Parser
+This layer is responsible for parsing the query string and dealing with the query. 
+##### Flex & Bison
+We use Flex and Bison to do lexical analysis and grammatical analysis. 
