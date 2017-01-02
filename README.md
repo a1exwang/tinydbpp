@@ -19,10 +19,10 @@ A simple single user, single thread, file-based SQL database implemented in C++ 
   cd $BUILD
   cmake $PROJECT_DIR
   make -j8
-  
+
   # To run a test
   test/testXXX
-  
+
   # To run Command line interface
   src/cli
   # To run graphical user interface
@@ -35,7 +35,7 @@ Each layer depends only on its lower layers.
 
 ![](pic/database.png)
 Main goals for each layer.
-#### Pager 
+#### Pager
 Provide a pager with which user can transparently CRUD(create/read/update/delete) a cached page.
 Sample:
 ```c++
@@ -45,11 +45,11 @@ Sample:
   pBuf[0] = 'A';
   pPage->markDirty();
   pPage->releaseBuf(pBuf);
-  
+
   pPager->
   delete pPage;
   }
-    
+
 ```
 
 #### Record
@@ -57,7 +57,7 @@ Provide APIs for basic operations on a record. The Record are categoried as "fix
 ##### Storage Structure
 - Page(0) in a file, which represents a table, records the schema of the table.
 - Page(1), Page(4098), Page(4097k + 1) is dictionary pages. 4097 pages is an extent. Every bytes in the dictionary page records the state (is fixed? is full?...) of its relevant data page.
-- Fixed pages use a linked list to record the blank places. This method can help us insert a record into a page quickly. 
+- Fixed pages use a linked list to record the blank places. This method can help us insert a record into a page quickly.
 ![](pic/fixed.png)
 - Not-fixed pages use a relatively simple structure. A length of record is saved ahead.
 - More details are in [Model.md](Model.md).
@@ -82,21 +82,21 @@ A Class `TableDescription` records tables' schema and encapsulate table's operat
 - embed. Embed a list of properties into a binary string.
 - read. Expand a binary string to a list of properties.
 - InsertInTable. All kinds of constrains are taken into consideration.
-- UpdateItems. 
+- UpdateItems.
 - SelectUseIndex.
 - SelectUseChecker.
 - DeleteAndCollectItemsUseIndex.
 - DeleteAndCollectItemsUseChecker.
 
 #### Parser
-This layer is responsible for parsing the query string and dealing with the query. 
+This layer is responsible for parsing the query string and dealing with the query.
 ##### Flex & Bison
-We use Flex and Bison to do lexical analysis and grammatical analysis. 
+We use Flex and Bison to do lexical analysis and grammatical analysis.
 ##### Query
 The class `Statement` has a property `type` to represent its query type. Virtual function `exec` will execute the statement.
 - Selection optimization is based on the principle `using index as possible`. We consider many situations such as `table1.col1 = table2.col1` and one of them has index or there's other constrains which can not use index but once enumerating this column, another column can use index and so on ...
 - Multiple tables joining is supported by implementing a `DFS` based selection method. We recursively find out which table should be enumerated or selected using index and assign the value to get a new `WhereClause` and new `Checker`.
-- Approximate matching //TODO
+- Approximate matching. See docs/doc.md
 
 ####Work Division
 - 丁铭负责了记录管理模块、系统管理模块和大部分查询解析模块代码和小部分测试代码。

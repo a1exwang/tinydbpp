@@ -7,8 +7,6 @@
     - 页大小 4096B
     - Cache 大小 10K页
 
-1. Record Manager
-
 1. BTree
   - 功能: 实现了一个基于 RecordManager 的 B+ 树, B+ 树的关键码类型为模板参数, 可以由用户编译时指定,
     B+ 树的数据为 Location 结构体, 即指向文件某个地址的指针.
